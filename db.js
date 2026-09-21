@@ -1,11 +1,13 @@
 const Database = require('better-sqlite3');
 const path = require('path');
 
-// Stored on disk next to the app. Note: most hosts (including Railway
-// without a mounted volume) reset the filesystem on redeploy — for real
-// production use, attach a persistent volume or move to a hosted Postgres
-// database. Fine for getting started.
-const db = new Database(path.join(__dirname, 'proshy.db'));
+// Database location. In production DATABASE_PATH points at a mounted
+// Railway volume (e.g. /app/data/proshy.db) so accounts, credits and
+// subscription records survive redeploys. With no DATABASE_PATH set —
+// local development — it falls back to a file next to the app.
+const DB_PATH = process.env.DATABASE_PATH || path.join(__dirname, 'proshy.db');
+const db = new Database(DB_PATH);
+console.log(`SQLite database: ${DB_PATH}`);
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS users (
