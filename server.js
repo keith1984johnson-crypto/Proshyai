@@ -13,6 +13,7 @@ const videoRoutes = require('./routes/video');        // /text-to-video, /image-
 const songwritingRoutes = require('./routes/songwriting');
 const musicRoutes = require('./routes/music');
 const musicVideoRoutes = require('./routes/musicVideo');
+const pixarRoutes = require('./routes/pixar');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -40,6 +41,7 @@ app.use('/api/video', videoRoutes);    // POST /api/video/text-to-video, /image-
 app.use('/api/songwriting', songwritingRoutes);
 app.use('/api/music', musicRoutes);
 app.use('/api/music-video', musicVideoRoutes);
+app.use('/api/pixar', pixarRoutes);       // POST /api/pixar/short-film, /api/pixar/long-film
 
 // Which providers are configured + credit/plan config (frontend uses this)
 app.get('/api/status', (req, res) => {

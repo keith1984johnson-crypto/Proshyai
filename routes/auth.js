@@ -3,10 +3,12 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { v4: uuidv4 } = require('uuid');
 const db = require('../db');
+const { FREE_TRIAL_CREDITS } = require('../config');
 
 const router = express.Router();
+
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-this';
-const COOKIE_NAME = 'shyshy_session';
+const COOKIE_NAME = 'proshy_session';
 
 function setSessionCookie(res, userId) {
   const token = jwt.sign({ userId }, JWT_SECRET, { expiresIn: '30d' });
@@ -16,6 +18,16 @@ function setSessionCookie(res, userId) {
     sameSite: 'lax',
     maxAge: 30 * 24 * 60 * 60 * 1000
   });
+}
+
+function publicUser(user) {
+  return {
+    id: user.id,
+    email: user.email,
+    credits: user.credits,
+    plan: user.plan,
+    subscriptionStatus: user.subscription_status
+  };
 }
 
 // POST /api/auth/signup  { email, password }
@@ -30,11 +42,12 @@ router.post('/signup', async (req, res) => {
   const id = uuidv4();
   const passwordHash = await bcrypt.hash(password, 10);
   db.prepare(
-    'INSERT INTO users (id, email, password_hash, created_at) VALUES (?, ?, ?, ?)'
-  ).run(id, email.toLowerCase(), passwordHash, new Date().toISOString());
+    'INSERT INTO users (id, email, password_hash, created_at, credits) VALUES (?, ?, ?, ?, ?)'
+  ).run(id, email.toLowerCase(), passwordHash, new Date().toISOString(), FREE_TRIAL_CREDITS);
 
   setSessionCookie(res, id);
-  res.json({ id, email: email.toLowerCase(), subscriptionStatus: 'none' });
+  const user = db.prepare('SELECT * FROM users WHERE id = ?').get(id);
+  res.json(publicUser(user));
 });
 
 // POST /api/auth/login  { email, password }
@@ -49,7 +62,7 @@ router.post('/login', async (req, res) => {
   if (!valid) return res.status(401).json({ error: 'Invalid email or password' });
 
   setSessionCookie(res, user.id);
-  res.json({ id: user.id, email: user.email, subscriptionStatus: user.subscription_status });
+  res.json(publicUser(user));
 });
 
 // POST /api/auth/logout
@@ -58,19 +71,18 @@ router.post('/logout', (req, res) => {
   res.json({ ok: true });
 });
 
-// GET /api/auth/me  — current logged-in user, or null
+// GET /api/auth/me — current logged-in user, or null
 router.get('/me', (req, res) => {
   const token = req.cookies?.[COOKIE_NAME];
   if (!token) return res.json({ user: null });
-
   try {
     const { userId } = jwt.verify(token, JWT_SECRET);
-    const user = db.prepare('SELECT id, email, subscription_status FROM users WHERE id = ?').get(userId);
+    const user = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
     if (!user) return res.json({ user: null });
-    res.json({ user: { id: user.id, email: user.email, subscriptionStatus: user.subscription_status } });
+    res.json({ user: publicUser(user) });
   } catch {
     res.json({ user: null });
   }
 });
 
-module.exports = { router, JWT_SECRET, COOKIE_NAME };
+module.exports = { router, JWT_SECRET, COOKIE_NAME, publicUser };
