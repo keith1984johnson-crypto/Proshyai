@@ -1,0 +1,486 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ProShy AI — image, video, songwriting &amp; music studio</title>
+    <link rel="stylesheet" href="/css/style.css" />
+  </head>
+  <body>
+    <div class="topbar">
+      <div class="wordmark">pro<span>shy</span> ai</div>
+      <div class="topbar-right">
+        <div id="creditsArea"></div>
+        <div id="accountArea"></div>
+      </div>
+    </div>
+    <!-- Auth modal -->
+    <div class="modal-backdrop" id="authModal" hidden>
+      <div class="modal">
+        <button class="modal-close" data-close-modal>&times;</button>
+        <div class="modal-tabs">
+          <button class="modal-tab active" data-auth-tab="login">Log in</button>
+          <button class="modal-tab" data-auth-tab="signup">Sign up</button>
+        </div>
+        <form id="authForm">
+          <div class="field">
+            <label for="auth-email">Email</label>
+            <input type="text" id="auth-email" autocomplete="email" required />
+          </div>
+          <div class="field">
+            <label for="auth-password">Password</label>
+            <input
+              type="password"
+              id="auth-password"
+              autocomplete="current-password"
+              required
+            />
+          </div>
+          <p class="modal-error" id="authError" hidden></p>
+          <button type="submit" class="generate-btn" id="authSubmitBtn">
+            Log in
+          </button>
+        </form>
+      </div>
+    </div>
+    <!-- Upgrade / plan picker modal -->
+    <div class="modal-backdrop" id="upgradeModal" hidden>
+      <div class="modal">
+        <button class="modal-close" data-close-modal>&times;</button>
+        <h2>Get more credits</h2>
+        <p>
+          You're out of credits for real generation. Pick a plan — credits top
+          up automatically every billing cycle.
+        </p>
+        <div class="plan-options">
+          <div class="plan-option selected" data-plan="weekly">
+            <span class="plan-name">Weekly</span>
+            <span class="plan-credits">100 credits / week</span>
+          </div>
+          <div class="plan-option" data-plan="monthly">
+            <span class="plan-name">Monthly</span>
+            <span class="plan-credits">500 credits / month</span>
+          </div>
+          <div class="plan-option" data-plan="yearly">
+            <span class="plan-name">Yearly</span>
+            <span class="plan-credits">6500 credits / year</span>
+          </div>
+        </div>
+        <button class="generate-btn" id="upgradeBtn">
+          Continue to checkout
+        </button>
+      </div>
+    </div>
+    <section class="hero">
+      <h1>One studio. Every format.</h1>
+      <p>
+        Images, video, songwriting, and full music videos — describe what you
+        want, ProShy AI hands it to the right model. New accounts start with 25
+        free credits, no card required.
+      </p>
+    </section>
+    <div class="studio">
+      <nav class="tool-rail" id="toolRail">
+        <button class="tool-item active" data-tool="text-to-image">
+          <span class="num">1</span>Text to image<span class="cost">5cr</span>
+        </button>
+        <button class="tool-item" data-tool="image-to-image">
+          <span class="num">2</span>Image to image<span class="cost">5cr</span>
+        </button>
+        <button class="tool-item" data-tool="text-to-video">
+          <span class="num">3</span>Text to video<span class="cost">20cr</span>
+        </button>
+        <button class="tool-item" data-tool="image-to-video">
+          <span class="num">4</span>Image to video<span class="cost">20cr</span>
+        </button>
+        <button class="tool-item" data-tool="songwriting">
+          <span class="num">5</span>Songwriting<span class="cost">3cr</span>
+        </button>
+        <button class="tool-item" data-tool="music">
+          <span class="num">6</span>Music<span class="cost">15cr</span>
+        </button>
+        <button class="tool-item" data-tool="music-video">
+          <span class="num">7</span>Music video<span class="cost">30cr</span>
+        </button>
+        <button class="tool-item" data-tool="pixar-short-film">
+          <span class="num">8</span>Pixar short film<span class="cost"
+            >35cr</span
+          >
+        </button>
+        <button class="tool-item" data-tool="pixar-long-film">
+          <span class="num">9</span>Pixar long film<span class="cost"
+            >35cr/scene</span
+          >
+        </button>
+      </nav>
+      <div class="panel">
+        <!-- 1. Text to Image -->
+        <div class="panel-view" data-view="text-to-image">
+          <div class="panel-head">
+            <h2>
+              Text to image
+              <span class="demo-badge" data-demo-for="image" hidden
+                >demo mode</span
+              >
+            </h2>
+            <p>Describe a scene and generate a still image.</p>
+          </div>
+          <div class="field">
+            <label for="ti-prompt">Prompt</label>
+            <textarea
+              id="ti-prompt"
+              rows="3"
+              placeholder="A neon-lit alley in the rain, cinematic"
+            ></textarea>
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label for="ti-style">Style</label>
+              <select id="ti-style">
+                <option>cinematic</option>
+                <option>photorealistic</option>
+                <option>anime</option>
+                <option>3D render</option>
+                <option>watercolor</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="ti-size">Size</label>
+              <select id="ti-size">
+                <option value="1024x1024">Square</option>
+                <option value="1792x1024">Widescreen</option>
+                <option value="1024x1792">Portrait</option>
+              </select>
+            </div>
+          </div>
+          <button class="generate-btn" data-action="text-to-image">
+            Generate image
+          </button>
+          <div class="output empty" id="out-text-to-image"></div>
+        </div>
+        <!-- 2. Image to Image -->
+        <div class="panel-view" data-view="image-to-image" hidden>
+          <div class="panel-head">
+            <h2>
+              Image to image
+              <span class="demo-badge" data-demo-for="image" hidden
+                >demo mode</span
+              >
+            </h2>
+            <p>Transform an existing image with a text instruction.</p>
+          </div>
+          <div class="field">
+            <label for="ii-image">Source image URL</label>
+            <input
+              type="text"
+              id="ii-image"
+              placeholder="https://… or paste a ProShy image result"
+            />
+          </div>
+          <div class="field">
+            <label for="ii-prompt">Change it to…</label>
+            <textarea
+              id="ii-prompt"
+              rows="3"
+              placeholder="Make it look like a watercolor painting"
+            ></textarea>
+          </div>
+          <button class="generate-btn" data-action="image-to-image">
+            Generate
+          </button>
+          <div class="output empty" id="out-image-to-image"></div>
+        </div>
+        <!-- 3. Text to Video -->
+        <div class="panel-view" data-view="text-to-video" hidden>
+          <div class="panel-head">
+            <h2>
+              Text to video
+              <span class="demo-badge" data-demo-for="video" hidden
+                >demo mode</span
+              >
+            </h2>
+            <p>Describe a shot or sequence.</p>
+          </div>
+          <div class="field">
+            <label for="tv-prompt">Prompt</label>
+            <textarea
+              id="tv-prompt"
+              rows="3"
+              placeholder="A paper boat drifting down a rain-soaked street, slow motion"
+            ></textarea>
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label for="tv-duration">Length</label>
+              <select id="tv-duration">
+                <option value="5">5s</option>
+                <option value="15">15s</option>
+                <option value="60">60s</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="tv-aspect">Aspect ratio</label>
+              <select id="tv-aspect">
+                <option value="16:9">Widescreen</option>
+                <option value="9:16">Vertical</option>
+                <option value="1:1">Square</option>
+              </select>
+            </div>
+          </div>
+          <button class="generate-btn" data-action="text-to-video">
+            Generate video
+          </button>
+          <div class="output empty" id="out-text-to-video"></div>
+        </div>
+        <!-- 4. Image to Video -->
+        <div class="panel-view" data-view="image-to-video" hidden>
+          <div class="panel-head">
+            <h2>
+              Image to video
+              <span class="demo-badge" data-demo-for="video" hidden
+                >demo mode</span
+              >
+            </h2>
+            <p>Bring a still image to life.</p>
+          </div>
+          <div class="field">
+            <label for="iv-image">Image URL</label>
+            <input type="text" id="iv-image" placeholder="https://…" />
+          </div>
+          <div class="field">
+            <label for="iv-prompt">Motion prompt (optional)</label>
+            <input
+              type="text"
+              id="iv-prompt"
+              placeholder="Slow push in, gentle wind"
+            />
+          </div>
+          <button class="generate-btn" data-action="image-to-video">
+            Generate video
+          </button>
+          <div class="output empty" id="out-image-to-video"></div>
+        </div>
+        <!-- 5. Songwriting -->
+        <div class="panel-view" data-view="songwriting" hidden>
+          <div class="panel-head">
+            <h2>
+              Songwriting
+              <span class="demo-badge" data-demo-for="songwriting" hidden
+                >demo mode</span
+              >
+            </h2>
+            <p>
+              Generate original lyrics — use them as-is, or feed them into Music
+              below.
+            </p>
+          </div>
+          <div class="field">
+            <label for="sw-topic">What's the song about?</label>
+            <textarea
+              id="sw-topic"
+              rows="2"
+              placeholder="Missing a place you used to call home"
+            ></textarea>
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label for="sw-genre">Genre</label>
+              <select id="sw-genre">
+                <option>pop</option>
+                <option>country</option>
+                <option>hip-hop</option>
+                <option>rock</option>
+                <option>R&B</option>
+                <option>folk</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="sw-mood">Mood</label>
+              <select id="sw-mood">
+                <option>upbeat</option>
+                <option>melancholic</option>
+                <option>romantic</option>
+                <option>anthemic</option>
+                <option>chill</option>
+              </select>
+            </div>
+          </div>
+          <button class="generate-btn" data-action="songwriting">
+            Write lyrics
+          </button>
+          <div class="output empty" id="out-songwriting"></div>
+        </div>
+        <!-- 6. Music -->
+        <div class="panel-view" data-view="music" hidden>
+          <div class="panel-head">
+            <h2>
+              Music
+              <span class="demo-badge" data-demo-for="music" hidden
+                >demo mode</span
+              >
+            </h2>
+            <p>
+              Generate a track — paste lyrics from Songwriting to make it a demo
+              of that song.
+            </p>
+          </div>
+          <div class="field">
+            <label for="mu-prompt">Describe the track</label>
+            <textarea
+              id="mu-prompt"
+              rows="2"
+              placeholder="Warm acoustic guitar, driving beat"
+            ></textarea>
+          </div>
+          <div class="field">
+            <label for="mu-lyrics"
+              >Lyrics (optional — makes this a song demo)</label
+            >
+            <textarea
+              id="mu-lyrics"
+              rows="3"
+              placeholder="Paste lyrics here…"
+            ></textarea>
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label for="mu-genre">Genre</label>
+              <select id="mu-genre">
+                <option>pop</option>
+                <option>cinematic</option>
+                <option>lo-fi</option>
+                <option>orchestral</option>
+                <option>electronic</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="mu-duration">Duration (seconds)</label>
+              <input
+                type="number"
+                id="mu-duration"
+                value="30"
+                min="10"
+                max="240"
+              />
+            </div>
+          </div>
+          <button class="generate-btn" data-action="music">
+            Generate music
+          </button>
+          <div class="output empty" id="out-music"></div>
+        </div>
+        <!-- 7. Music Video -->
+        <div class="panel-view" data-view="music-video" hidden>
+          <div class="panel-head">
+            <h2>
+              Music video
+              <span class="demo-badge" data-demo-for="video" hidden
+                >demo mode</span
+              >
+            </h2>
+            <p>
+              Generate visuals styled to match your song's theme and lyrics.
+            </p>
+          </div>
+          <div class="field">
+            <label for="mv-song">What's the song about?</label>
+            <input
+              type="text"
+              id="mv-song"
+              placeholder="Missing a place you used to call home"
+            />
+          </div>
+          <div class="field">
+            <label for="mv-visual">Visual style</label>
+            <textarea
+              id="mv-visual"
+              rows="2"
+              placeholder="Sun-bleached home movies, golden hour, handheld camera"
+            ></textarea>
+          </div>
+          <div class="field">
+            <label for="mv-lyrics">Lyrics (optional)</label>
+            <textarea
+              id="mv-lyrics"
+              rows="3"
+              placeholder="Paste lyrics here for tighter thematic match…"
+            ></textarea>
+          </div>
+          <button class="generate-btn" data-action="music-video">
+            Generate music video
+          </button>
+          <div class="output empty" id="out-music-video"></div>
+        </div>
+        <!-- 8. Pixar Short Film -->
+        <div class="panel-view" data-view="pixar-short-film" hidden>
+          <div class="panel-head">
+            <h2>
+              Pixar short film
+              <span class="demo-badge" data-demo-for="video" hidden
+                >demo mode</span
+              >
+            </h2>
+            <p>
+              One Pixar-styled clip — a single scene, up to the video provider's
+              max clip length.
+            </p>
+          </div>
+          <div class="field">
+            <label for="ps-prompt">Scene</label>
+            <textarea
+              id="ps-prompt"
+              rows="3"
+              placeholder="A shy little robot finding its first friend in an overgrown garden"
+            ></textarea>
+          </div>
+          <div class="field">
+            <label for="ps-duration">Target length</label>
+            <select id="ps-duration">
+              <option value="5">5s</option>
+              <option value="10">10s</option>
+              <option value="15">15s</option>
+            </select>
+          </div>
+          <button class="generate-btn" data-action="pixar-short-film">
+            Generate short film
+          </button>
+          <div class="output empty" id="out-pixar-short-film"></div>
+        </div>
+        <!-- 9. Pixar Long Film -->
+        <div class="panel-view" data-view="pixar-long-film" hidden>
+          <div class="panel-head">
+            <h2>
+              Pixar long film
+              <span class="demo-badge" data-demo-for="video" hidden
+                >demo mode</span
+              >
+            </h2>
+            <p>
+              Describe your film scene by scene (one per line). Each scene
+              generates as its own Pixar-styled clip — stitching them into one
+              continuous film is a manual editing step for now, using the clips
+              this returns.
+            </p>
+          </div>
+          <div class="field">
+            <label for="pl-title">Film title</label>
+            <input type="text" id="pl-title" placeholder="The Garden Robot" />
+          </div>
+          <div class="field">
+            <label for="pl-scenes">Scenes (one per line)</label>
+            <textarea
+              id="pl-scenes"
+              rows="6"
+              placeholder="A rusty robot wakes up in an abandoned greenhouse&#10;It discovers a single blooming flower&#10;It builds a tiny watering system from spare parts&#10;The garden blooms to life around it"
+            ></textarea>
+          </div>
+          <button class="generate-btn" data-action="pixar-long-film">
+            Generate all scenes
+          </button>
+          <div class="output empty" id="out-pixar-long-film"></div>
+        </div>
+      </div>
+    </div>
+    <script src="/js/app.js"></script>
+  </body>
+</html>
