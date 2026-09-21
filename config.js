@@ -7,7 +7,9 @@ const CREDIT_COSTS = {
   imageToVideo: 20,
   songwriting: 3,
   music: 15,
-  musicVideo: 30
+  musicVideo: 30,
+  pixarShortFilm: 35,
+  pixarLongFilmScene: 35   // charged per scene, since a long film is built from multiple generated clips
 };
 
 // New signups get this many credits immediately, no card required —
