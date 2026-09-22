@@ -15,6 +15,7 @@ const musicRoutes = require('./routes/music');
 const musicVideoRoutes = require('./routes/musicVideo');
 const pixarRoutes = require('./routes/pixar');
 const { router: voiceoverRoutes } = require('./routes/voiceover');
+const { router: accountRoutes } = require('./routes/account');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -43,6 +44,7 @@ app.use('/api/songwriting', songwritingRoutes);
 app.use('/api/music', musicRoutes);
 app.use('/api/music-video', musicVideoRoutes);
 app.use('/api/voiceover', voiceoverRoutes);       // POST /api/voiceover
+app.use('/api/account', accountRoutes);          // BYOK: OpenAI key connect/status/disconnect
 app.use('/api/pixar', pixarRoutes);       // POST /api/pixar/short-film, /api/pixar/long-film
 
 // Which providers are configured + credit/plan config (frontend uses this)

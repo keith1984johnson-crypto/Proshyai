@@ -2,6 +2,7 @@ const express = require('express');
 const fetch = require('node-fetch');
 const { withFallback, newJobId } = require('./_utils');
 const { CREDIT_COSTS } = require('../config');
+const { resolveOpenAIKey } = require('./account');
 
 const router = express.Router();
 
@@ -10,14 +11,17 @@ router.post('/text-to-image', async (req, res) => {
   const { prompt, style = 'cinematic', size = '1024x1024' } = req.body;
   if (!prompt) return res.status(400).json({ error: 'prompt is required' });
 
+  // The user's own key takes precedence over the server's (BYOK).
+  const openaiKey = resolveOpenAIKey(req.user);
+
   const result = await withFallback({
-    hasKey: !!process.env.OPENAI_API_KEY,
+    hasKey: !!openaiKey,
     user: req.user,
     cost: CREDIT_COSTS.textToImage,
     run: async () => {
       const r = await fetch('https://api.openai.com/v1/images/generations', {
         method: 'POST',
-        headers: { 'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`, 'Content-Type': 'application/json' },
+        headers: { 'Authorization': `Bearer ${openaiKey}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ model: 'gpt-image-1', prompt: `${prompt}, style: ${style}`, size })
       });
       if (!r.ok) throw new Error(`OpenAI error ${r.status}: ${await r.text()}`);
@@ -39,8 +43,11 @@ router.post('/image-to-image', async (req, res) => {
   const { imageUrl, prompt } = req.body;
   if (!imageUrl || !prompt) return res.status(400).json({ error: 'imageUrl and prompt are required' });
 
+  // The user's own key takes precedence over the server's (BYOK).
+  const openaiKey = resolveOpenAIKey(req.user);
+
   const result = await withFallback({
-    hasKey: !!process.env.OPENAI_API_KEY,
+    hasKey: !!openaiKey,
     user: req.user,
     cost: CREDIT_COSTS.imageToImage,
     run: async () => {
@@ -57,7 +64,7 @@ router.post('/image-to-image', async (req, res) => {
 
       const r = await fetch('https://api.openai.com/v1/images/edits', {
         method: 'POST',
-        headers: { 'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`, ...form.getHeaders() },
+        headers: { 'Authorization': `Bearer ${openaiKey}`, ...form.getHeaders() },
         body: form
       });
       if (!r.ok) throw new Error(`OpenAI error ${r.status}: ${await r.text()}`);
