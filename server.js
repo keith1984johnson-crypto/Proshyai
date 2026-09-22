@@ -14,6 +14,7 @@ const songwritingRoutes = require('./routes/songwriting');
 const musicRoutes = require('./routes/music');
 const musicVideoRoutes = require('./routes/musicVideo');
 const pixarRoutes = require('./routes/pixar');
+const { router: voiceoverRoutes } = require('./routes/voiceover');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -41,6 +42,7 @@ app.use('/api/video', videoRoutes);    // POST /api/video/text-to-video, /image-
 app.use('/api/songwriting', songwritingRoutes);
 app.use('/api/music', musicRoutes);
 app.use('/api/music-video', musicVideoRoutes);
+app.use('/api/voiceover', voiceoverRoutes);       // POST /api/voiceover
 app.use('/api/pixar', pixarRoutes);       // POST /api/pixar/short-film, /api/pixar/long-film
 
 // Which providers are configured + credit/plan config (frontend uses this)
@@ -50,6 +52,7 @@ app.get('/api/status', (req, res) => {
     video: !!process.env.RUNWAY_API_KEY || !!process.env.LUMA_API_KEY,
     songwriting: !!process.env.OPENAI_API_KEY,
     music: !!process.env.SUNO_API_KEY || !!process.env.STABILITY_AUDIO_KEY,
+    voiceover: !!process.env.ELEVENLABS_API_KEY,
     billingConfigured: !!process.env.STRIPE_SECRET_KEY
   });
 });
