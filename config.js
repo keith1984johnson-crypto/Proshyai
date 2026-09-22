@@ -8,9 +8,9 @@ const CREDIT_COSTS = {
   songwriting: 3,
   music: 15,
   musicVideo: 30,
-  voiceover: 8,
-  pixarNarration: 8,
-  vocalGuide: 8,
+  voiceover: 10,
+  pixarNarration: 10,
+  vocalGuide: 10,
   pixarShortFilm: 35,
   pixarLongFilmScene: 35   // charged per scene, since a long film is built from multiple generated clips
 };
