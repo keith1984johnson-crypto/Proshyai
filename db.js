@@ -45,4 +45,15 @@ function addUserColumn(name, definition) {
 addUserColumn('openai_key_encrypted', 'TEXT');
 addUserColumn('openai_key_last4', 'TEXT');
 
+// Stripe delivers webhooks at least once, and retries on any non-2xx.
+// Recording the event ids we have already applied keeps a retry from
+// granting a second month of credits.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS processed_stripe_events (
+    id TEXT PRIMARY KEY,
+    type TEXT,
+    processed_at TEXT NOT NULL
+  );
+`);
+
 module.exports = db;
