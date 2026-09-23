@@ -14,7 +14,6 @@
         <div id="accountArea"></div>
       </div>
     </div>
-    <!-- Auth modal -->
     <div class="modal-backdrop" id="authModal" hidden>
       <div class="modal">
         <button class="modal-close" data-close-modal>&times;</button>
@@ -71,6 +70,33 @@
         </button>
       </div>
     </div>
+    <!-- OpenAI API key (BYOK) modal -->
+    <div class="modal-backdrop" id="apiKeyModal" hidden>
+      <div class="modal">
+        <button class="modal-close" data-close-modal>&times;</button>
+        <h2>Your own OpenAI key</h2>
+        <p id="apiKeyStatus">
+          Paste your own OpenAI key so your real generations bill to your
+          account, not ours.
+        </p>
+        <form id="apiKeyForm">
+          <div class="field">
+            <label for="apiKeyInput">OpenAI API key</label>
+            <input type="text" id="apiKeyInput" placeholder="sk-..." />
+          </div>
+          <p class="modal-error" id="apiKeyError" hidden></p>
+          <button type="submit" class="generate-btn">Save key</button>
+        </form>
+        <button
+          class="account-btn"
+          id="disconnectKeyBtn"
+          style="margin-top: 12px; width: 100%"
+          hidden
+        >
+          Disconnect key
+        </button>
+      </div>
+    </div>
     <section class="hero">
       <h1>One studio. Every format.</h1>
       <p>
@@ -111,6 +137,9 @@
           <span class="num">9</span>Pixar long film<span class="cost"
             >35cr/scene</span
           >
+        </button>
+        <button class="tool-item" data-tool="voiceover">
+          <span class="num">10</span>Voiceover<span class="cost">10cr</span>
         </button>
       </nav>
       <div class="panel">
@@ -342,6 +371,20 @@
               placeholder="Paste lyrics here…"
             ></textarea>
           </div>
+          <div class="field">
+            <label
+              style="
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                cursor: pointer;
+              "
+            >
+              <input type="checkbox" id="mu-vocal-guide" style="width: auto" />
+              Add a spoken-word vocal guide of the lyrics (10cr — expressive
+              reading, not sung vocals)
+            </label>
+          </div>
           <div class="field-row">
             <div class="field">
               <label for="mu-genre">Genre</label>
@@ -441,6 +484,16 @@
               <option value="15">15s</option>
             </select>
           </div>
+          <div class="field">
+            <label for="ps-narration"
+              >Narration (optional — 10cr, separate audio file)</label
+            >
+            <textarea
+              id="ps-narration"
+              rows="2"
+              placeholder="Once upon a time, in a garden nobody visited anymore…"
+            ></textarea>
+          </div>
           <button class="generate-btn" data-action="pixar-short-film">
             Generate short film
           </button>
@@ -474,10 +527,56 @@
               placeholder="A rusty robot wakes up in an abandoned greenhouse&#10;It discovers a single blooming flower&#10;It builds a tiny watering system from spare parts&#10;The garden blooms to life around it"
             ></textarea>
           </div>
+          <div class="field">
+            <label for="pl-narration"
+              >Whole-film narration (optional — 10cr, one track for the entire
+              film)</label
+            >
+            <textarea
+              id="pl-narration"
+              rows="2"
+              placeholder="Once upon a time, in a garden nobody visited anymore…"
+            ></textarea>
+          </div>
           <button class="generate-btn" data-action="pixar-long-film">
             Generate all scenes
           </button>
           <div class="output empty" id="out-pixar-long-film"></div>
+        </div>
+        <!-- 10. Voiceover -->
+        <div class="panel-view" data-view="voiceover" hidden>
+          <div class="panel-head">
+            <h2>
+              Voiceover
+              <span class="demo-badge" data-demo-for="voiceover" hidden
+                >demo mode</span
+              >
+            </h2>
+            <p>
+              Turn text into a spoken audio track — for narration,
+              announcements, or anything else that needs a voice.
+            </p>
+          </div>
+          <div class="field">
+            <label for="vo-text">Script</label>
+            <textarea
+              id="vo-text"
+              rows="4"
+              placeholder="Somewhere between the noise, a quieter idea was waiting…"
+            ></textarea>
+          </div>
+          <div class="field">
+            <label for="vo-voice">Voice</label>
+            <select id="vo-voice">
+              <option value="21m00Tcm4TlvDq8ikWAM">Warm — Rachel</option>
+              <option value="AZnzlk1XvdvUeBnXmlld">Bright — Domi</option>
+              <option value="EXAVITQu4vr4xnSDxMaL">Soft — Bella</option>
+            </select>
+          </div>
+          <button class="generate-btn" data-action="voiceover">
+            Generate voiceover
+          </button>
+          <div class="output empty" id="out-voiceover"></div>
         </div>
       </div>
     </div>

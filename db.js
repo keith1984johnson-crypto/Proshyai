@@ -23,4 +23,26 @@ db.exec(`
   );
 `);
 
+// --- migrations -------------------------------------------------------
+// Additive only, and safe to run on every boot.
+//
+// SQLite has no "ADD COLUMN IF NOT EXISTS", and probing with PRAGMA
+// table_info leaves a prepared Statement alive that trips a better-sqlite3
+// teardown assertion on Node 24 (the process aborts at exit). Attempting
+// the ALTER and swallowing the duplicate-column error avoids creating any
+// statement at all.
+function addUserColumn(name, definition) {
+  try {
+    db.exec(`ALTER TABLE users ADD COLUMN ${name} ${definition}`);
+  } catch (err) {
+    if (!/duplicate column name/i.test(err.message)) throw err;
+  }
+}
+
+// User-supplied OpenAI key (BYOK), encrypted at rest by lib/crypto.js.
+// Only the last 4 characters are stored in the clear, so the UI can show
+// which key is connected without ever decrypting it.
+addUserColumn('openai_key_encrypted', 'TEXT');
+addUserColumn('openai_key_last4', 'TEXT');
+
 module.exports = db;
