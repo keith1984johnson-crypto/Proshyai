@@ -6,19 +6,20 @@
   "type": "commonjs",
   "scripts": {
     "start": "node server.js",
-    "dev": "node server.js"
+    "dev": "node server.js",
+    "test": "node tests/billing.test.js"
   },
   "dependencies": {
-    "express": "^4.19.2",
+    "bcryptjs": "^2.4.3",
+    "better-sqlite3": "^11.3.0",
+    "cookie-parser": "^1.4.6",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
-    "node-fetch": "^2.7.0",
+    "express": "^4.19.2",
     "form-data": "^4.0.0",
-    "uuid": "^9.0.1",
-    "better-sqlite3": "^11.3.0",
-    "bcryptjs": "^2.4.3",
     "jsonwebtoken": "^9.0.2",
-    "cookie-parser": "^1.4.6",
-    "stripe": "^16.12.0"
+    "node-fetch": "^2.7.0",
+    "stripe": "^16.12.0",
+    "uuid": "^9.0.1"
   }
 }
