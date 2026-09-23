@@ -457,3 +457,36 @@ a {
     flex-direction: column;
   }
 }
+
+/* ---------- Unavailable tools ---------- */
+/* A tool whose provider key is missing still works, but only returns a
+   placeholder. Say so in the rail rather than letting people discover it
+   by clicking. */
+.tool-item.unavailable {
+  opacity: 0.55;
+}
+
+.tool-item.unavailable:hover {
+  opacity: 0.8;
+}
+
+.tool-item .demo-tag {
+  font-size: 10px;
+  color: var(--violet);
+  border: 1px solid var(--violet);
+  border-radius: 100px;
+  padding: 1px 6px;
+  margin-left: 6px;
+  flex-shrink: 0;
+}
+
+.provider-note {
+  background: rgba(167, 139, 250, 0.08);
+  border: 1px solid rgba(167, 139, 250, 0.3);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 13px;
+  color: var(--text);
+  line-height: 1.5;
+  margin: 0 0 20px;
+}

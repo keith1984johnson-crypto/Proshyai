@@ -15,7 +15,7 @@ const musicRoutes = require('./routes/music');
 const musicVideoRoutes = require('./routes/musicVideo');
 const pixarRoutes = require('./routes/pixar');
 const { router: voiceoverRoutes } = require('./routes/voiceover');
-const { router: accountRoutes } = require('./routes/account');
+const { router: accountRoutes, hasOpenAIKey } = require('./routes/account');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -50,9 +50,11 @@ app.use('/api/pixar', pixarRoutes);       // POST /api/pixar/short-film, /api/pi
 // Which providers are configured + credit/plan config (frontend uses this)
 app.get('/api/status', (req, res) => {
   res.json({
-    image: !!process.env.OPENAI_API_KEY,
+    // Account-aware: a user who connected their own key (BYOK) has these
+    // tools available even when the server itself has no OpenAI key.
+    image: hasOpenAIKey(req.user),
     video: !!process.env.RUNWAY_API_KEY || !!process.env.LUMA_API_KEY,
-    songwriting: !!process.env.OPENAI_API_KEY,
+    songwriting: hasOpenAIKey(req.user),
     music: !!process.env.SUNO_API_KEY || !!process.env.STABILITY_AUDIO_KEY,
     voiceover: !!process.env.ELEVENLABS_API_KEY,
     billingConfigured: !!process.env.STRIPE_SECRET_KEY
