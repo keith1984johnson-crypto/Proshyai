@@ -157,6 +157,7 @@ if (apiKeyForm) {
       hasOwnOpenAIKey = true;
       input.value = "";
       renderAccountArea();
+      refreshProviderStatus();
       document.getElementById("apiKeyModal").hidden = true;
     } catch (err) {
       errorEl.textContent = err.message;
@@ -169,6 +170,7 @@ if (apiKeyForm) {
       await fetch("/api/account/openai-key", { method: "DELETE" });
       hasOwnOpenAIKey = false;
       renderAccountArea();
+      refreshProviderStatus();
       document.getElementById("apiKeyModal").hidden = true;
     });
 }
@@ -186,16 +188,84 @@ toolItems.forEach((btn) => {
     });
   });
 });
-// ---------- Provider status badges ----------
-fetch("/api/status")
-  .then((r) => r.json())
-  .then((status) => {
-    document.querySelectorAll("[data-demo-for]").forEach((badge) => {
-      const key = badge.dataset.demoFor;
-      if (!status[key]) badge.hidden = false;
-    });
-  })
-  .catch(() => {});
+// ---------- Provider status ----------
+// Which provider each tool depends on, so the rail can show what is actually
+// usable right now instead of letting people click into a placeholder.
+const TOOL_PROVIDER = {
+  "text-to-image": "image",
+  "image-to-image": "image",
+  "text-to-video": "video",
+  "image-to-video": "video",
+  songwriting: "songwriting",
+  music: "music",
+  "music-video": "video",
+  "pixar-short-film": "video",
+  "pixar-long-film": "video",
+  voiceover: "voiceover",
+};
+
+const PROVIDER_HINT = {
+  image: "needs an OpenAI key",
+  songwriting: "needs an OpenAI key",
+  video: "needs a Luma or Runway key",
+  music: "needs a Stability or Suno key",
+  voiceover: "needs an ElevenLabs key",
+};
+
+// Re-read after connecting or disconnecting a personal key: with BYOK the
+// answer is per-account, not per-server.
+async function refreshProviderStatus() {
+  let status;
+  try {
+    const res = await fetch("/api/status");
+    status = await res.json();
+  } catch {
+    return;
+  }
+
+  document.querySelectorAll("[data-demo-for]").forEach((badge) => {
+    badge.hidden = Boolean(status[badge.dataset.demoFor]);
+  });
+
+  document.querySelectorAll(".tool-item").forEach((item) => {
+    const provider = TOOL_PROVIDER[item.dataset.tool];
+    const available = provider ? Boolean(status[provider]) : true;
+    item.classList.toggle("unavailable", !available);
+    item.title = available ? "" : `Demo only - ${PROVIDER_HINT[provider]}`;
+
+    let tag = item.querySelector(".demo-tag");
+    if (!available && !tag) {
+      tag = document.createElement("span");
+      tag.className = "demo-tag";
+      tag.textContent = "demo";
+      item.appendChild(tag);
+    } else if (available && tag) {
+      tag.remove();
+    }
+  });
+
+  // Explain the situation at the top of each affected panel, once.
+  document.querySelectorAll(".panel-view").forEach((view) => {
+    const provider = TOOL_PROVIDER[view.dataset.view];
+    const available = provider ? Boolean(status[provider]) : true;
+    let note = view.querySelector(".provider-note");
+
+    if (!available && !note) {
+      note = document.createElement("p");
+      note.className = "provider-note";
+      note.innerHTML =
+        `This tool returns a placeholder because it ${PROVIDER_HINT[provider]}.` +
+        (provider === "image" || provider === "songwriting"
+          ? " Connect your own OpenAI key from the menu above to use it for real."
+          : "");
+      view.querySelector(".panel-head").appendChild(note);
+    } else if (available && note) {
+      note.remove();
+    }
+  });
+}
+
+refreshProviderStatus();
 // ---------- Helpers ----------
 function setLoading(outEl, btn, isLoading, label) {
   if (isLoading) {
