@@ -227,42 +227,53 @@ async function refreshProviderStatus() {
     badge.hidden = Boolean(status[badge.dataset.demoFor]);
   });
 
+  // Hide tools whose provider is not configured, rather than showing a
+  // tool that can only ever return a stock placeholder. They reappear the
+  // moment a key exists - including a personal key connected via BYOK.
   document.querySelectorAll(".tool-item").forEach((item) => {
     const provider = TOOL_PROVIDER[item.dataset.tool];
     const available = provider ? Boolean(status[provider]) : true;
-    item.classList.toggle("unavailable", !available);
-    item.title = available ? "" : `Demo only - ${PROVIDER_HINT[provider]}`;
-
-    let tag = item.querySelector(".demo-tag");
-    if (!available && !tag) {
-      tag = document.createElement("span");
-      tag.className = "demo-tag";
-      tag.textContent = "demo";
-      item.appendChild(tag);
-    } else if (available && tag) {
-      tag.remove();
-    }
+    item.hidden = !available;
+    item.title = available ? "" : `Unavailable - ${PROVIDER_HINT[provider]}`;
   });
 
-  // Explain the situation at the top of each affected panel, once.
   document.querySelectorAll(".panel-view").forEach((view) => {
     const provider = TOOL_PROVIDER[view.dataset.view];
-    const available = provider ? Boolean(status[provider]) : true;
-    let note = view.querySelector(".provider-note");
-
-    if (!available && !note) {
-      note = document.createElement("p");
-      note.className = "provider-note";
-      note.innerHTML =
-        `This tool returns a placeholder because it ${PROVIDER_HINT[provider]}.` +
-        (provider === "image" || provider === "songwriting"
-          ? " Connect your own Gemini key from the menu above to use it for real."
-          : "");
-      view.querySelector(".panel-head").appendChild(note);
-    } else if (available && note) {
-      note.remove();
-    }
+    if (provider && !status[provider]) view.hidden = true;
   });
+
+  // Renumber the visible tools so the rail always reads 1..n.
+  let n = 0;
+  document.querySelectorAll(".tool-item").forEach((item) => {
+    if (item.hidden) return;
+    n++;
+    const num = item.querySelector(".num");
+    if (num) num.textContent = String(n);
+  });
+
+  // The default tab may now be hidden; fall back to the first visible tool.
+  const active = document.querySelector(".tool-item.active");
+  if (!active || active.hidden) {
+    const first = document.querySelector(".tool-item:not([hidden])");
+    if (first) first.click();
+  }
+
+  // If everything is hidden, say so instead of showing an empty studio.
+  const anyVisible = Boolean(
+    document.querySelector(".tool-item:not([hidden])"),
+  );
+  const rail = document.getElementById("toolRail");
+  let emptyMsg = document.getElementById("noToolsMessage");
+  if (!anyVisible && !emptyMsg && rail) {
+    emptyMsg = document.createElement("p");
+    emptyMsg.id = "noToolsMessage";
+    emptyMsg.className = "provider-note";
+    emptyMsg.textContent =
+      "No tools are available yet - the server has no provider keys configured. Connect your own Gemini key to enable the image and songwriting tools.";
+    rail.appendChild(emptyMsg);
+  } else if (anyVisible && emptyMsg) {
+    emptyMsg.remove();
+  }
 }
 
 refreshProviderStatus();
