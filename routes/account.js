@@ -51,11 +51,12 @@ router.post('/gemini-key', requireAuth, async (req, res) => {
 
   const key = apiKey.trim();
 
-  if (!key.startsWith('AIza')) {
+  // Google issues both formats: older keys start "AIza", newer ones "AQ.".
+  if (!key.startsWith('AIza') && !key.startsWith('AQ.')) {
     return res.status(400).json({
       error: key.startsWith('sk-')
-        ? 'That looks like an OpenAI key. ProShy uses Gemini now — get a free key at aistudio.google.com/apikey (it starts with "AIza").'
-        : 'That does not look like a Gemini key — they start with "AIza".'
+        ? 'That looks like an OpenAI key. ProShy uses Gemini now — get a free key at aistudio.google.com/apikey.'
+        : 'That does not look like a Gemini key — they start with "AIza" or "AQ.".'
     });
   }
 

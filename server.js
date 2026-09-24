@@ -52,7 +52,13 @@ app.get('/api/status', (req, res) => {
   res.json({
     // Account-aware: a user who connected their own key (BYOK) has these
     // tools available even when the server itself has no Gemini key.
-    image: hasGeminiKey(req.user),
+    //
+    // Images are gated separately: Gemini's free tier allows 0 image
+    // requests per day, so a free key can generate lyrics but every image
+    // call returns 429. Showing the image tools by default would put two
+    // permanently-broken tools back on the page. Set GEMINI_IMAGE_ENABLED=1
+    // once the account has paid image access.
+    image: hasGeminiKey(req.user) && process.env.GEMINI_IMAGE_ENABLED === '1',
     video: !!process.env.RUNWAY_API_KEY || !!process.env.LUMA_API_KEY,
     songwriting: hasGeminiKey(req.user),
     music: !!process.env.ELEVENLABS_API_KEY,
