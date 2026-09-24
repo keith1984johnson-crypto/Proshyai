@@ -70,19 +70,19 @@
         </button>
       </div>
     </div>
-    <!-- OpenAI API key (BYOK) modal -->
+    <!-- Gemini API key (BYOK) modal -->
     <div class="modal-backdrop" id="apiKeyModal" hidden>
       <div class="modal">
         <button class="modal-close" data-close-modal>&times;</button>
-        <h2>Your own OpenAI key</h2>
+        <h2>Your own Gemini key</h2>
         <p id="apiKeyStatus">
-          Paste your own OpenAI key so your real generations bill to your
-          account, not ours.
+          Paste your own Gemini key so your real generations run on your
+          account, not ours. Free keys at aistudio.google.com/apikey.
         </p>
         <form id="apiKeyForm">
           <div class="field">
-            <label for="apiKeyInput">OpenAI API key</label>
-            <input type="text" id="apiKeyInput" placeholder="sk-..." />
+            <label for="apiKeyInput">Gemini API key</label>
+            <input type="text" id="apiKeyInput" placeholder="AIza..." />
           </div>
           <p class="modal-error" id="apiKeyError" hidden></p>
           <button type="submit" class="generate-btn">Save key</button>

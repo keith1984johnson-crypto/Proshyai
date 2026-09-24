@@ -1,7 +1,7 @@
 // ---------- Auth & credits state ----------
 let currentUser = null;
 let selectedPlan = "weekly";
-let hasOwnOpenAIKey = false;
+let hasOwnGeminiKey = false;
 async function refreshAuthState() {
   try {
     const res = await fetch("/api/auth/me");
@@ -18,11 +18,11 @@ async function refreshAuthState() {
     // before renderAccountArea(), leaving logged-in users with an empty
     // top bar: no credits, no log out.
     try {
-      const statusRes = await fetch("/api/account/openai-key/status");
+      const statusRes = await fetch("/api/account/gemini-key/status");
       const statusData = await statusRes.json();
-      hasOwnOpenAIKey = Boolean(statusData.connected);
+      hasOwnGeminiKey = Boolean(statusData.connected);
     } catch {
-      hasOwnOpenAIKey = false;
+      hasOwnGeminiKey = false;
     }
   }
 
@@ -33,7 +33,7 @@ function renderAccountArea() {
   const creditsEl = document.getElementById("creditsArea");
   if (currentUser) {
     creditsEl.innerHTML = `<span class="credits-badge">${currentUser.credits} credits</span>`;
-    accountEl.innerHTML = `      <div class="account-chip">        <span>${currentUser.email}</span>        <button id="apiKeyBtn">${hasOwnOpenAIKey ? "OpenAI key ✓" : "Connect OpenAI key"}</button>        <button id="upgradeChipBtn">Get credits</button>        <button id="logoutBtn">Log out</button>      </div>`;
+    accountEl.innerHTML = `      <div class="account-chip">        <span>${currentUser.email}</span>        <button id="apiKeyBtn">${hasOwnGeminiKey ? "Gemini key ✓" : "Connect Gemini key"}</button>        <button id="upgradeChipBtn">Get credits</button>        <button id="logoutBtn">Log out</button>      </div>`;
     document.getElementById("logoutBtn").addEventListener("click", async () => {
       await fetch("/api/auth/logout", { method: "POST" });
       currentUser = null;
@@ -44,10 +44,10 @@ function renderAccountArea() {
     });
     document.getElementById("apiKeyBtn").addEventListener("click", () => {
       document.getElementById("apiKeyModal").hidden = false;
-      document.getElementById("apiKeyStatus").textContent = hasOwnOpenAIKey
+      document.getElementById("apiKeyStatus").textContent = hasOwnGeminiKey
         ? "A key is connected. Paste a new one to replace it, or disconnect below."
-        : "Paste your own OpenAI key so your real generations bill to your account, not ours.";
-      document.getElementById("disconnectKeyBtn").hidden = !hasOwnOpenAIKey;
+        : "Paste your own Gemini key so your real generations run on your account, not ours.";
+      document.getElementById("disconnectKeyBtn").hidden = !hasOwnGeminiKey;
     });
   } else {
     creditsEl.innerHTML = "";
@@ -138,7 +138,7 @@ function maybeShowUpgradeModal(apiResult) {
     document.getElementById("upgradeModal").hidden = false;
   }
 }
-// ---------- OpenAI API key (BYOK) modal ----------
+// ---------- Gemini API key (BYOK) modal ----------
 const apiKeyForm = document.getElementById("apiKeyForm");
 if (apiKeyForm) {
   apiKeyForm.addEventListener("submit", async (e) => {
@@ -147,14 +147,14 @@ if (apiKeyForm) {
     const errorEl = document.getElementById("apiKeyError");
     errorEl.hidden = true;
     try {
-      const res = await fetch("/api/account/openai-key", {
+      const res = await fetch("/api/account/gemini-key", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ apiKey: input.value.trim() }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Could not save key");
-      hasOwnOpenAIKey = true;
+      hasOwnGeminiKey = true;
       input.value = "";
       renderAccountArea();
       refreshProviderStatus();
@@ -167,8 +167,8 @@ if (apiKeyForm) {
   document
     .getElementById("disconnectKeyBtn")
     .addEventListener("click", async () => {
-      await fetch("/api/account/openai-key", { method: "DELETE" });
-      hasOwnOpenAIKey = false;
+      await fetch("/api/account/gemini-key", { method: "DELETE" });
+      hasOwnGeminiKey = false;
       renderAccountArea();
       refreshProviderStatus();
       document.getElementById("apiKeyModal").hidden = true;
@@ -205,10 +205,10 @@ const TOOL_PROVIDER = {
 };
 
 const PROVIDER_HINT = {
-  image: "needs an OpenAI key",
-  songwriting: "needs an OpenAI key",
+  image: "needs a Gemini key",
+  songwriting: "needs a Gemini key",
   video: "needs a Luma or Runway key",
-  music: "needs a Stability or Suno key",
+  music: "needs an ElevenLabs key",
   voiceover: "needs an ElevenLabs key",
 };
 
@@ -227,42 +227,53 @@ async function refreshProviderStatus() {
     badge.hidden = Boolean(status[badge.dataset.demoFor]);
   });
 
+  // Hide tools whose provider is not configured, rather than showing a
+  // tool that can only ever return a stock placeholder. They reappear the
+  // moment a key exists - including a personal key connected via BYOK.
   document.querySelectorAll(".tool-item").forEach((item) => {
     const provider = TOOL_PROVIDER[item.dataset.tool];
     const available = provider ? Boolean(status[provider]) : true;
-    item.classList.toggle("unavailable", !available);
-    item.title = available ? "" : `Demo only - ${PROVIDER_HINT[provider]}`;
-
-    let tag = item.querySelector(".demo-tag");
-    if (!available && !tag) {
-      tag = document.createElement("span");
-      tag.className = "demo-tag";
-      tag.textContent = "demo";
-      item.appendChild(tag);
-    } else if (available && tag) {
-      tag.remove();
-    }
+    item.hidden = !available;
+    item.title = available ? "" : `Unavailable - ${PROVIDER_HINT[provider]}`;
   });
 
-  // Explain the situation at the top of each affected panel, once.
   document.querySelectorAll(".panel-view").forEach((view) => {
     const provider = TOOL_PROVIDER[view.dataset.view];
-    const available = provider ? Boolean(status[provider]) : true;
-    let note = view.querySelector(".provider-note");
-
-    if (!available && !note) {
-      note = document.createElement("p");
-      note.className = "provider-note";
-      note.innerHTML =
-        `This tool returns a placeholder because it ${PROVIDER_HINT[provider]}.` +
-        (provider === "image" || provider === "songwriting"
-          ? " Connect your own OpenAI key from the menu above to use it for real."
-          : "");
-      view.querySelector(".panel-head").appendChild(note);
-    } else if (available && note) {
-      note.remove();
-    }
+    if (provider && !status[provider]) view.hidden = true;
   });
+
+  // Renumber the visible tools so the rail always reads 1..n.
+  let n = 0;
+  document.querySelectorAll(".tool-item").forEach((item) => {
+    if (item.hidden) return;
+    n++;
+    const num = item.querySelector(".num");
+    if (num) num.textContent = String(n);
+  });
+
+  // The default tab may now be hidden; fall back to the first visible tool.
+  const active = document.querySelector(".tool-item.active");
+  if (!active || active.hidden) {
+    const first = document.querySelector(".tool-item:not([hidden])");
+    if (first) first.click();
+  }
+
+  // If everything is hidden, say so instead of showing an empty studio.
+  const anyVisible = Boolean(
+    document.querySelector(".tool-item:not([hidden])"),
+  );
+  const rail = document.getElementById("toolRail");
+  let emptyMsg = document.getElementById("noToolsMessage");
+  if (!anyVisible && !emptyMsg && rail) {
+    emptyMsg = document.createElement("p");
+    emptyMsg.id = "noToolsMessage";
+    emptyMsg.className = "provider-note";
+    emptyMsg.textContent =
+      "No tools are available yet - the server has no provider keys configured. Connect your own Gemini key to enable the image and songwriting tools.";
+    rail.appendChild(emptyMsg);
+  } else if (anyVisible && emptyMsg) {
+    emptyMsg.remove();
+  }
 }
 
 refreshProviderStatus();
@@ -330,11 +341,7 @@ document
       outEl.appendChild(img);
       renderCaption(
         outEl,
-        demoOrCreditsCaption(
-          data,
-          "Generated",
-          "add OPENAI_API_KEY to go live",
-        ),
+        demoOrCreditsCaption(data, "Generated", "add a Gemini key to go live"),
       );
       syncCreditsFromResult(data);
       maybeShowUpgradeModal(data);
@@ -363,11 +370,7 @@ document
       outEl.appendChild(img);
       renderCaption(
         outEl,
-        demoOrCreditsCaption(
-          data,
-          "Generated",
-          "add OPENAI_API_KEY to go live",
-        ),
+        demoOrCreditsCaption(data, "Generated", "add a Gemini key to go live"),
       );
       syncCreditsFromResult(data);
       maybeShowUpgradeModal(data);
@@ -466,11 +469,7 @@ document
       outEl.appendChild(pre);
       renderCaption(
         outEl,
-        demoOrCreditsCaption(
-          data,
-          "Generated",
-          "add OPENAI_API_KEY to go live",
-        ),
+        demoOrCreditsCaption(data, "Generated", "add a Gemini key to go live"),
       );
       syncCreditsFromResult(data);
       maybeShowUpgradeModal(data);
@@ -510,7 +509,7 @@ document
         demoOrCreditsCaption(
           data,
           "Generated",
-          "add SUNO_API_KEY or STABILITY_AUDIO_KEY to go live",
+          "add ELEVENLABS_API_KEY to go live",
         ),
       );
       syncCreditsFromResult(data);

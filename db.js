@@ -45,6 +45,11 @@ function addUserColumn(name, definition) {
 addUserColumn('openai_key_encrypted', 'TEXT');
 addUserColumn('openai_key_last4', 'TEXT');
 
+// Gemini replaced OpenAI for text and images; the older openai_* columns
+// are left in place so no existing row is destroyed by the switch.
+addUserColumn('gemini_key_encrypted', 'TEXT');
+addUserColumn('gemini_key_last4', 'TEXT');
+
 // Stripe delivers webhooks at least once, and retries on any non-2xx.
 // Recording the event ids we have already applied keeps a retry from
 // granting a second month of credits.

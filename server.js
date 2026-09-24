@@ -15,7 +15,7 @@ const musicRoutes = require('./routes/music');
 const musicVideoRoutes = require('./routes/musicVideo');
 const pixarRoutes = require('./routes/pixar');
 const { router: voiceoverRoutes } = require('./routes/voiceover');
-const { router: accountRoutes, hasOpenAIKey } = require('./routes/account');
+const { router: accountRoutes, hasGeminiKey } = require('./routes/account');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -44,18 +44,24 @@ app.use('/api/songwriting', songwritingRoutes);
 app.use('/api/music', musicRoutes);
 app.use('/api/music-video', musicVideoRoutes);
 app.use('/api/voiceover', voiceoverRoutes);       // POST /api/voiceover
-app.use('/api/account', accountRoutes);          // BYOK: OpenAI key connect/status/disconnect
+app.use('/api/account', accountRoutes);          // BYOK: Gemini key connect/status/disconnect
 app.use('/api/pixar', pixarRoutes);       // POST /api/pixar/short-film, /api/pixar/long-film
 
 // Which providers are configured + credit/plan config (frontend uses this)
 app.get('/api/status', (req, res) => {
   res.json({
     // Account-aware: a user who connected their own key (BYOK) has these
-    // tools available even when the server itself has no OpenAI key.
-    image: hasOpenAIKey(req.user),
+    // tools available even when the server itself has no Gemini key.
+    //
+    // Images are gated separately: Gemini's free tier allows 0 image
+    // requests per day, so a free key can generate lyrics but every image
+    // call returns 429. Showing the image tools by default would put two
+    // permanently-broken tools back on the page. Set GEMINI_IMAGE_ENABLED=1
+    // once the account has paid image access.
+    image: hasGeminiKey(req.user) && process.env.GEMINI_IMAGE_ENABLED === '1',
     video: !!process.env.RUNWAY_API_KEY || !!process.env.LUMA_API_KEY,
-    songwriting: hasOpenAIKey(req.user),
-    music: !!process.env.SUNO_API_KEY || !!process.env.STABILITY_AUDIO_KEY,
+    songwriting: hasGeminiKey(req.user),
+    music: !!process.env.ELEVENLABS_API_KEY,
     voiceover: !!process.env.ELEVENLABS_API_KEY,
     billingConfigured: !!process.env.STRIPE_SECRET_KEY
   });

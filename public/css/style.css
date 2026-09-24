@@ -490,3 +490,11 @@ a {
   line-height: 1.5;
   margin: 0 0 20px;
 }
+
+/* The [hidden] attribute sets display:none via the UA stylesheet, but any
+   explicit display rule beats it - .tool-item is display:flex and
+   .demo-badge is display:inline-block, so "hidden" elements stayed on
+   screen. This makes the attribute authoritative everywhere. */
+[hidden] {
+  display: none !important;
+}
