@@ -1,7 +1,7 @@
 const express = require('express');
 const Stripe = require('stripe');
 const db = require('../db');
-const { CREDIT_GRANTS } = require('../config');
+const { CREDIT_GRANTS, CREDIT_PACKS } = require('../config');
 
 const router = express.Router();
 const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY) : null;
@@ -20,7 +20,14 @@ function priceIdFor(plan) {
     monthly: process.env.STRIPE_PRICE_MONTHLY,
     yearly: process.env.STRIPE_PRICE_YEARLY
   };
-  return perPlan[plan] || process.env.STRIPE_PRICE_ID || null;
+  if (perPlan[plan]) return perPlan[plan];
+
+  // One-off packs use their own prices, e.g. STRIPE_PRICE_STARTER.
+  if (CREDIT_PACKS[plan]) {
+    return process.env[`STRIPE_PRICE_${plan.toUpperCase()}`] || null;
+  }
+
+  return process.env.STRIPE_PRICE_ID || null;
 }
 
 /** Add credits to an account and return the new balance. */
@@ -63,9 +70,22 @@ function applyStripeEvent(event) {
     // grant credits here: invoice.paid fires for the first period too, and
     // granting in both places would double-credit every new subscriber.
     case 'checkout.session.completed': {
-      const plan = (object.metadata && object.metadata.plan) || null;
+      const meta = object.metadata || {};
       const user = userByCustomerId(object.customer);
       if (!user) return { applied: false, reason: 'unknown customer' };
+
+      // A one-off pack has no invoice cycle, so this event IS the payment.
+      const pack = meta.pack && CREDIT_PACKS[meta.pack] ? meta.pack : null;
+      if (pack) {
+        if (!claimEvent(event.id, type)) {
+          return { applied: false, reason: 'duplicate event' };
+        }
+        const credits = CREDIT_PACKS[pack].credits;
+        const balance = grantCredits(user.id, credits);
+        return { applied: true, action: 'pack-purchased', userId: user.id, pack, credits, balance };
+      }
+
+      const plan = meta.plan || null;
 
       db.prepare(
         'UPDATE users SET stripe_subscription_id = ?, subscription_status = ?, plan = COALESCE(?, plan) WHERE id = ?'
@@ -128,8 +148,12 @@ router.post('/create-checkout-session', async (req, res) => {
   if (!stripe) return res.status(503).json({ error: 'Billing is not configured yet (missing STRIPE_SECRET_KEY).' });
 
   const plan = String((req.body && req.body.plan) || '').toLowerCase();
-  if (!CREDIT_GRANTS[plan]) {
-    return res.status(400).json({ error: `Unknown plan "${plan}". Choose weekly, monthly or yearly.` });
+  const isPack = Boolean(CREDIT_PACKS[plan]);
+
+  if (!isPack && !CREDIT_GRANTS[plan]) {
+    return res.status(400).json({
+      error: `Unknown plan "${plan}". Choose ${Object.keys(CREDIT_GRANTS).join(', ')} or ${Object.keys(CREDIT_PACKS).join(', ')}.`
+    });
   }
 
   const price = priceIdFor(plan);
@@ -154,19 +178,22 @@ router.post('/create-checkout-session', async (req, res) => {
 
     // Record the chosen plan immediately: invoice.paid can arrive before
     // checkout.session.completed, and the grant depends on knowing the plan.
-    db.prepare('UPDATE users SET plan = ? WHERE id = ?').run(plan, user.id);
+    // A one-off pack is not a plan, so it must not overwrite one.
+    if (!isPack) {
+      db.prepare('UPDATE users SET plan = ? WHERE id = ?').run(plan, user.id);
+    }
 
     const session = await stripe.checkout.sessions.create({
-      mode: 'subscription',
+      mode: isPack ? 'payment' : 'subscription',
       customer: customerId,
       line_items: [{ price, quantity: 1 }],
-      metadata: { userId: user.id, plan },
-      subscription_data: { metadata: { userId: user.id, plan } },
+      metadata: isPack ? { userId: user.id, pack: plan } : { userId: user.id, plan },
+      ...(isPack ? {} : { subscription_data: { metadata: { userId: user.id, plan } } }),
       success_url: `${req.protocol}://${req.get('host')}/?checkout=success`,
       cancel_url: `${req.protocol}://${req.get('host')}/?checkout=canceled`
     });
 
-    res.json({ url: session.url, plan, credits: CREDIT_GRANTS[plan] });
+    res.json({ url: session.url, plan, credits: isPack ? CREDIT_PACKS[plan].credits : CREDIT_GRANTS[plan] });
   } catch (err) {
     console.error('[billing] checkout failed:', err.message);
     res.status(502).json({ error: 'Could not start checkout. Try again shortly.' });
