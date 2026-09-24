@@ -16,8 +16,32 @@ const CREDIT_COSTS = {
 };
 
 // New signups get this many credits immediately, no card required —
-// this IS the free trial. Change the number to adjust trial generosity.
-const FREE_TRIAL_CREDITS = 25;
+// this IS the free trial. Set FREE_TRIAL_CREDITS=0 to require payment
+// before anything real can be generated.
+const FREE_TRIAL_CREDITS = Number.isFinite(Number(process.env.FREE_TRIAL_CREDITS))
+  ? Number(process.env.FREE_TRIAL_CREDITS)
+  : 25;
+
+// One-off credit packs, for people who want to pay once instead of
+// subscribing. The price itself lives in Stripe; this is only the size of
+// the bundle that a successful payment grants.
+const CREDIT_PACKS = {
+  starter: {
+    credits: 60,
+    label: 'Starter pack',
+    blurb: 'One-off top-up, no subscription',
+    usd: 5
+  }
+};
+
+// Display prices, in USD. These are what the UI shows; the amount actually
+// charged is whatever the matching Stripe price says, so the two must be
+// kept in step.
+const PLAN_PRICES = {
+  weekly: 9,
+  monthly: 19,
+  yearly: 149
+};
 
 // How many credits a subscriber's account is topped up with each time
 // Stripe successfully bills them (weekly / monthly / yearly cadence).
@@ -29,4 +53,4 @@ const CREDIT_GRANTS = {
   yearly: 6500
 };
 
-module.exports = { CREDIT_COSTS, FREE_TRIAL_CREDITS, CREDIT_GRANTS };
+module.exports = { CREDIT_COSTS, FREE_TRIAL_CREDITS, CREDIT_GRANTS, CREDIT_PACKS, PLAN_PRICES };

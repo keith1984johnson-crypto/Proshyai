@@ -18,7 +18,7 @@ const tmpDb = path.join(os.tmpdir(), `proshy-test-${Date.now()}.db`);
 process.env.DATABASE_PATH = tmpDb;
 
 const db = require('../db');
-const { CREDIT_GRANTS } = require('../config');
+const { CREDIT_GRANTS, CREDIT_PACKS } = require('../config');
 const { applyStripeEvent } = require('../routes/billing');
 
 let passed = 0;
@@ -126,6 +126,56 @@ test('a cancelled account gets no credits from a later invoice', () => {
   const result = applyStripeEvent({ id: 'evt_after_cancel', type: 'invoice.paid', data: { object: { customer: 'cus_1' } } });
   assert.strictEqual(result.applied, false);
   assert.strictEqual(creditsOf('u1'), before);
+});
+
+test('a one-off pack grants its credits on checkout.session.completed', () => {
+  makeUser({ id: 'u4', customerId: 'cus_4', credits: 0 });
+  const result = applyStripeEvent({
+    id: 'evt_pack_1',
+    type: 'checkout.session.completed',
+    data: { object: { customer: 'cus_4', metadata: { pack: 'starter' } } }
+  });
+
+  assert.strictEqual(result.applied, true);
+  assert.strictEqual(result.action, 'pack-purchased');
+  assert.strictEqual(creditsOf('u4'), CREDIT_PACKS.starter.credits);
+});
+
+test('a pack purchase does not make the account look subscribed', () => {
+  assert.strictEqual(userRow('u4').plan, 'none');
+  assert.strictEqual(userRow('u4').subscription_status, 'none');
+});
+
+test('a retried pack purchase does not grant twice', () => {
+  const before = creditsOf('u4');
+  const result = applyStripeEvent({
+    id: 'evt_pack_1',
+    type: 'checkout.session.completed',
+    data: { object: { customer: 'cus_4', metadata: { pack: 'starter' } } }
+  });
+  assert.strictEqual(result.applied, false);
+  assert.strictEqual(creditsOf('u4'), before);
+});
+
+test('a second, separate pack purchase grants again', () => {
+  const before = creditsOf('u4');
+  applyStripeEvent({
+    id: 'evt_pack_2',
+    type: 'checkout.session.completed',
+    data: { object: { customer: 'cus_4', metadata: { pack: 'starter' } } }
+  });
+  assert.strictEqual(creditsOf('u4'), before + CREDIT_PACKS.starter.credits);
+});
+
+test('an unknown pack name is ignored rather than granting anything', () => {
+  makeUser({ id: 'u5', customerId: 'cus_5', credits: 0 });
+  const result = applyStripeEvent({
+    id: 'evt_pack_bogus',
+    type: 'checkout.session.completed',
+    data: { object: { customer: 'cus_5', metadata: { pack: 'unlimited-free-forever' } } }
+  });
+  assert.strictEqual(result.action, 'subscription-started');
+  assert.strictEqual(creditsOf('u5'), 0, 'no credits for an unrecognised pack');
 });
 
 test('an unknown customer is ignored safely', () => {
