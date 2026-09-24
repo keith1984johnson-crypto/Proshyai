@@ -2,7 +2,8 @@ const express = require('express');
 const fetch = require('node-fetch');
 const { withFallback, newJobId } = require('./_utils');
 const { CREDIT_COSTS } = require('../config');
-const { resolveOpenAIKey } = require('./account');
+const { resolveGeminiKey } = require('./account');
+const gemini = require('../lib/gemini');
 
 const router = express.Router();
 
@@ -12,21 +13,17 @@ router.post('/text-to-image', async (req, res) => {
   if (!prompt) return res.status(400).json({ error: 'prompt is required' });
 
   // The user's own key takes precedence over the server's (BYOK).
-  const openaiKey = resolveOpenAIKey(req.user);
+  const geminiKey = resolveGeminiKey(req.user);
 
   const result = await withFallback({
-    hasKey: !!openaiKey,
+    hasKey: !!geminiKey,
     user: req.user,
     cost: CREDIT_COSTS.textToImage,
     run: async () => {
-      const r = await fetch('https://api.openai.com/v1/images/generations', {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${openaiKey}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model: 'gpt-image-1', prompt: `${prompt}, style: ${style}`, size })
-      });
-      if (!r.ok) throw new Error(`OpenAI error ${r.status}: ${await r.text()}`);
-      const data = await r.json();
-      const imageUrl = data.data?.[0]?.url || `data:image/png;base64,${data.data?.[0]?.b64_json}`;
+      const imageUrl = await gemini.generateImage(
+        geminiKey,
+        `${prompt}. Style: ${style}. Aspect/size hint: ${size}.`
+      );
       return { imageUrl };
     },
     demo: async () => ({
@@ -38,38 +35,30 @@ router.post('/text-to-image', async (req, res) => {
 });
 
 // POST /api/image-to-image  { imageUrl, prompt }
-// Uses OpenAI's image edit endpoint to transform an existing image.
+// Uses Gemini image editing: the source image is passed as a reference.
 router.post('/image-to-image', async (req, res) => {
   const { imageUrl, prompt } = req.body;
   if (!imageUrl || !prompt) return res.status(400).json({ error: 'imageUrl and prompt are required' });
 
   // The user's own key takes precedence over the server's (BYOK).
-  const openaiKey = resolveOpenAIKey(req.user);
+  const geminiKey = resolveGeminiKey(req.user);
 
   const result = await withFallback({
-    hasKey: !!openaiKey,
+    hasKey: !!geminiKey,
     user: req.user,
     cost: CREDIT_COSTS.imageToImage,
     run: async () => {
-      // Fetch the source image, then send it + prompt to OpenAI's edit endpoint.
+      // Fetch the source image and hand it to Gemini as a reference.
       const sourceRes = await fetch(imageUrl);
       if (!sourceRes.ok) throw new Error('Could not fetch the source image');
       const sourceBuffer = await sourceRes.buffer();
+      const mimeType = sourceRes.headers.get('content-type') || 'image/png';
 
-      const FormData = require('form-data');
-      const form = new FormData();
-      form.append('image', sourceBuffer, { filename: 'source.png', contentType: 'image/png' });
-      form.append('prompt', prompt);
-      form.append('model', 'gpt-image-1');
-
-      const r = await fetch('https://api.openai.com/v1/images/edits', {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${openaiKey}`, ...form.getHeaders() },
-        body: form
+      const outUrl = await gemini.generateImage(geminiKey, prompt, {
+        base64: sourceBuffer.toString('base64'),
+        mimeType: mimeType.split(';')[0]
       });
-      if (!r.ok) throw new Error(`OpenAI error ${r.status}: ${await r.text()}`);
-      const data = await r.json();
-      const outUrl = data.data?.[0]?.url || `data:image/png;base64,${data.data?.[0]?.b64_json}`;
+
       return { imageUrl: outUrl };
     },
     demo: async () => ({

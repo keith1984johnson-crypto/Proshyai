@@ -15,7 +15,7 @@ const musicRoutes = require('./routes/music');
 const musicVideoRoutes = require('./routes/musicVideo');
 const pixarRoutes = require('./routes/pixar');
 const { router: voiceoverRoutes } = require('./routes/voiceover');
-const { router: accountRoutes, hasOpenAIKey } = require('./routes/account');
+const { router: accountRoutes, hasGeminiKey } = require('./routes/account');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -44,18 +44,18 @@ app.use('/api/songwriting', songwritingRoutes);
 app.use('/api/music', musicRoutes);
 app.use('/api/music-video', musicVideoRoutes);
 app.use('/api/voiceover', voiceoverRoutes);       // POST /api/voiceover
-app.use('/api/account', accountRoutes);          // BYOK: OpenAI key connect/status/disconnect
+app.use('/api/account', accountRoutes);          // BYOK: Gemini key connect/status/disconnect
 app.use('/api/pixar', pixarRoutes);       // POST /api/pixar/short-film, /api/pixar/long-film
 
 // Which providers are configured + credit/plan config (frontend uses this)
 app.get('/api/status', (req, res) => {
   res.json({
     // Account-aware: a user who connected their own key (BYOK) has these
-    // tools available even when the server itself has no OpenAI key.
-    image: hasOpenAIKey(req.user),
+    // tools available even when the server itself has no Gemini key.
+    image: hasGeminiKey(req.user),
     video: !!process.env.RUNWAY_API_KEY || !!process.env.LUMA_API_KEY,
-    songwriting: hasOpenAIKey(req.user),
-    music: !!process.env.SUNO_API_KEY || !!process.env.STABILITY_AUDIO_KEY,
+    songwriting: hasGeminiKey(req.user),
+    music: !!process.env.ELEVENLABS_API_KEY,
     voiceover: !!process.env.ELEVENLABS_API_KEY,
     billingConfigured: !!process.env.STRIPE_SECRET_KEY
   });

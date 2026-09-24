@@ -31,28 +31,28 @@ router.post('/', async (req, res) => {
   if (!prompt) return res.status(400).json({ error: 'prompt is required' });
 
   const result = await withFallback({
-    hasKey: !!process.env.SUNO_API_KEY || !!process.env.STABILITY_AUDIO_KEY,
+    hasKey: !!process.env.ELEVENLABS_API_KEY,
     user: req.user,
     cost: CREDIT_COSTS.music,
     run: async () => {
-      // Example using Stability AI's audio generation endpoint.
-      // Swap for Suno's API if you have access — better suited to full songs with vocals.
-      const r = await fetch('https://api.stability.ai/v2beta/audio/stable-audio-2/text-to-audio', {
+      // ElevenLabs Music. Chosen because the ElevenLabs key is already paid
+      // for; note it draws on the same character/credit budget as voiceover.
+      const r = await fetch('https://api.elevenlabs.io/v1/music', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${process.env.STABILITY_AUDIO_KEY}`,
+          'xi-api-key': process.env.ELEVENLABS_API_KEY,
           'Content-Type': 'application/json',
-          'Accept': 'audio/mpeg'
+          Accept: 'audio/mpeg'
         },
         body: JSON.stringify({
           prompt: `${genre} track: ${prompt}${instrumental ? ', instrumental only' : ''}${lyrics ? `. Lyrics: ${lyrics.slice(0, 500)}` : ''}`,
-          duration: durationSeconds
+          music_length_ms: Math.min(Math.max(Number(durationSeconds) * 1000, 3000), 600000),
+          force_instrumental: Boolean(instrumental)
         })
       });
-      if (!r.ok) throw new Error(`Stability Audio error ${r.status}: ${await r.text()}`);
+      if (!r.ok) throw new Error(`ElevenLabs Music error ${r.status}: ${await r.text()}`);
       const buffer = await r.buffer();
-      const audioUrl = `data:audio/mpeg;base64,${buffer.toString('base64')}`;
-      return { audioUrl };
+      return { audioUrl: `data:audio/mpeg;base64,${buffer.toString('base64')}` };
     },
     demo: async () => ({
       audioUrl: 'https://interactive-examples.mdn.mozilla.net/media/cc0-audio/t-rex-roar.mp3'
