@@ -2,6 +2,8 @@ const express = require('express');
 const fetch = require('node-fetch');
 const { withFallback, newJobId } = require('./_utils');
 const { CREDIT_COSTS } = require('../config');
+const { resolveGeminiKey } = require('./account');
+const gemini = require('../lib/gemini');
 
 const router = express.Router();
 
@@ -10,19 +12,17 @@ router.post('/text-to-video', async (req, res) => {
   const { prompt, duration = 5, aspectRatio = '16:9' } = req.body;
   if (!prompt) return res.status(400).json({ error: 'prompt is required' });
 
+  const geminiKey = resolveGeminiKey(req.user);
+
   const result = await withFallback({
-    hasKey: !!process.env.RUNWAY_API_KEY || !!process.env.LUMA_API_KEY,
+    hasKey: !!geminiKey,
     user: req.user,
     cost: CREDIT_COSTS.textToVideo,
     run: async () => {
-      const r = await fetch('https://api.lumalabs.ai/dream-machine/v1/generations', {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${process.env.LUMA_API_KEY}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt, aspect_ratio: aspectRatio })
-      });
-      if (!r.ok) throw new Error(`Luma error ${r.status}: ${await r.text()}`);
-      const data = await r.json();
-      return { jobId: data.id, status: data.state || 'queued', pollUrl: `/api/video/status/${data.id}` };
+      const video = await gemini.generateVideo(geminiKey, prompt, { aspectRatio });
+      return video.videoUrl
+        ? { videoUrl: video.videoUrl, status: 'complete' }
+        : { status: 'processing', operation: video.operationName, note: 'Still rendering - check back shortly.' };
     },
     demo: async () => ({
       status: 'demo-complete',
@@ -38,23 +38,25 @@ router.post('/image-to-video', async (req, res) => {
   const { imageUrl, prompt = '', duration = 5 } = req.body;
   if (!imageUrl) return res.status(400).json({ error: 'imageUrl is required' });
 
+  const geminiKey = resolveGeminiKey(req.user);
+
   const result = await withFallback({
-    hasKey: !!process.env.RUNWAY_API_KEY,
+    hasKey: !!geminiKey,
     user: req.user,
     cost: CREDIT_COSTS.imageToVideo,
     run: async () => {
-      const r = await fetch('https://api.dev.runwayml.com/v1/image_to_video', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${process.env.RUNWAY_API_KEY}`,
-          'Content-Type': 'application/json',
-          'X-Runway-Version': '2024-11-06'
-        },
-        body: JSON.stringify({ promptImage: imageUrl, promptText: prompt, model: 'gen3a_turbo', duration })
+      const sourceRes = await fetch(imageUrl);
+      if (!sourceRes.ok) throw new Error('Could not fetch the source image');
+      const buffer = await sourceRes.buffer();
+      const mimeType = (sourceRes.headers.get('content-type') || 'image/png').split(';')[0];
+
+      const video = await gemini.generateVideo(geminiKey, prompt || 'Animate this image naturally.', {
+        image: { base64: buffer.toString('base64'), mimeType }
       });
-      if (!r.ok) throw new Error(`Runway error ${r.status}: ${await r.text()}`);
-      const data = await r.json();
-      return { jobId: data.id, status: 'queued', pollUrl: `/api/video/status/${data.id}` };
+
+      return video.videoUrl
+        ? { videoUrl: video.videoUrl, status: 'complete' }
+        : { status: 'processing', operation: video.operationName, note: 'Still rendering - check back shortly.' };
     },
     demo: async () => ({
       status: 'demo-complete',

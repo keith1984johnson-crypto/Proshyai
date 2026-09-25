@@ -498,3 +498,80 @@ a {
 [hidden] {
   display: none !important;
 }
+
+/* ---------- Tool sections ---------- */
+/* Desktop: all sections stacked in the side rail with headings.
+   Mobile: sections become tabs across the top and only the active one's
+   tools are listed - a ten-item side column does not fit a phone. */
+.rail-heading {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  margin: 18px 0 6px 14px;
+  font-weight: 600;
+}
+
+.rail-section:first-child .rail-heading {
+  margin-top: 0;
+}
+
+.section-tabs {
+  display: none;
+}
+
+@media (max-width: 780px) {
+  .section-tabs {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    padding-bottom: 10px;
+    margin-bottom: 12px;
+    border-bottom: 1px solid var(--line);
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .section-tab {
+    flex: 0 0 auto;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    color: var(--muted);
+    font-family: inherit;
+    font-size: 13.5px;
+    padding: 9px 16px;
+    border-radius: 100px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  .section-tab.active {
+    color: #0b1a08;
+    background: var(--accent);
+    border-color: var(--accent);
+    font-weight: 600;
+  }
+
+  /* On mobile only the active section's tools are shown. */
+  .rail-section {
+    display: none;
+  }
+
+  .rail-section.active {
+    display: block;
+  }
+
+  .rail-heading {
+    display: none;
+  }
+
+  .tool-rail {
+    display: block;
+    overflow: visible;
+    border-bottom: none;
+    margin-bottom: 14px;
+  }
+
+  .tool-item {
+    width: 100%;
+  }
+}

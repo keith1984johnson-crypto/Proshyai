@@ -175,7 +175,33 @@ if (apiKeyForm) {
     });
 }
 refreshAuthState();
-// ---------- Tab switching ----------
+// ---------- Section + tool switching ----------
+// Sections group the tools (Image / Video / Film / Music & Voice). On mobile
+// the sections become tabs across the top and only the active section's
+// tools are listed, which keeps the rail from pushing the studio off screen.
+function showSection(section) {
+  document.querySelectorAll(".section-tab").forEach((t) => {
+    t.classList.toggle("active", t.dataset.section === section);
+  });
+  document.querySelectorAll(".rail-section").forEach((r) => {
+    r.classList.toggle("active", r.dataset.section === section);
+  });
+
+  // Selecting a section selects its first available tool.
+  const first = document.querySelector(
+    `.rail-section[data-section="${section}"] .tool-item:not([hidden])`,
+  );
+  if (first && !first.classList.contains("active")) first.click();
+}
+
+document.querySelectorAll(".section-tab").forEach((tab) => {
+  tab.addEventListener("click", () => showSection(tab.dataset.section));
+});
+
+// Start on the first section so the mobile view is never blank.
+document.querySelector(".rail-section")?.classList.add("active");
+
+// ---------- Tool switching ----------
 const toolItems = document.querySelectorAll(".tool-item");
 const panelViews = document.querySelectorAll(".panel-view");
 toolItems.forEach((btn) => {
@@ -186,6 +212,17 @@ toolItems.forEach((btn) => {
     panelViews.forEach((v) => {
       v.hidden = v.dataset.view !== target;
     });
+
+    // Keep the section tabs in step with whichever tool is active.
+    const section = btn.dataset.section;
+    if (section) {
+      document.querySelectorAll(".section-tab").forEach((t) => {
+        t.classList.toggle("active", t.dataset.section === section);
+      });
+      document.querySelectorAll(".rail-section").forEach((r) => {
+        r.classList.toggle("active", r.dataset.section === section);
+      });
+    }
   });
 });
 // ---------- Provider status ----------
@@ -199,8 +236,8 @@ const TOOL_PROVIDER = {
   songwriting: "songwriting",
   music: "music",
   "music-video": "video",
-  "pixar-short-film": "video",
-  "pixar-long-film": "video",
+  "animated-short-film": "video",
+  "animated-long-film": "video",
   voiceover: "voiceover",
 };
 
@@ -240,6 +277,16 @@ async function refreshProviderStatus() {
   document.querySelectorAll(".panel-view").forEach((view) => {
     const provider = TOOL_PROVIDER[view.dataset.view];
     if (provider && !status[provider]) view.hidden = true;
+  });
+
+  // Hide a whole section when none of its tools are available.
+  document.querySelectorAll(".rail-section").forEach((sec) => {
+    const anyVisible = Boolean(sec.querySelector(".tool-item:not([hidden])"));
+    sec.hidden = !anyVisible;
+    const tab = document.querySelector(
+      `.section-tab[data-section="${sec.dataset.section}"]`,
+    );
+    if (tab) tab.hidden = !anyVisible;
   });
 
   // Renumber the visible tools so the rail always reads 1..n.
@@ -640,15 +687,15 @@ document
   });
 // ---------- Pixar Short Film ----------
 document
-  .querySelector('[data-action="pixar-short-film"]')
+  .querySelector('[data-action="animated-short-film"]')
   .addEventListener("click", async (e) => {
     const btn = e.target,
-      outEl = document.getElementById("out-pixar-short-film");
+      outEl = document.getElementById("out-animated-short-film");
     const prompt = document.getElementById("ps-prompt").value.trim();
     if (!prompt) return alert("Describe the scene first.");
     setLoading(outEl, btn, true);
     try {
-      const data = await postJSON("/api/pixar/short-film", {
+      const data = await postJSON("/api/film/short-film", {
         prompt,
         duration: Number(document.getElementById("ps-duration").value),
         narration: document.getElementById("ps-narration").value.trim(),
@@ -681,10 +728,10 @@ document
   });
 // ---------- Pixar Long Film ----------
 document
-  .querySelector('[data-action="pixar-long-film"]')
+  .querySelector('[data-action="animated-long-film"]')
   .addEventListener("click", async (e) => {
     const btn = e.target,
-      outEl = document.getElementById("out-pixar-long-film");
+      outEl = document.getElementById("out-animated-long-film");
     const title = document.getElementById("pl-title").value.trim();
     const scenesRaw = document.getElementById("pl-scenes").value.trim();
     const scenes = scenesRaw
@@ -695,7 +742,7 @@ document
       return alert("Add at least one scene, one per line.");
     setLoading(outEl, btn, true);
     try {
-      const data = await postJSON("/api/pixar/long-film", {
+      const data = await postJSON("/api/film/long-film", {
         title,
         scenes,
         narration: document.getElementById("pl-narration").value.trim(),
