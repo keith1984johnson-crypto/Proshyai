@@ -16,6 +16,7 @@ const musicVideoRoutes = require('./routes/musicVideo');
 const filmRoutes = require('./routes/film');
 const { router: voiceoverRoutes } = require('./routes/voiceover');
 const { router: accountRoutes, hasGeminiKey } = require('./routes/account');
+const { router: oauthRoutes, isConfigured: googleConfigured, callbackUrl } = require('./routes/oauth');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -33,6 +34,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // --- Auth & billing ---
 app.use('/api/auth', authRouter);
+app.use('/api/auth', oauthRoutes);       // /api/auth/google, /api/auth/google/callback
 app.use('/api/billing', billingRouter);
 
 // --- Generation routes ---
@@ -63,7 +65,8 @@ app.get('/api/status', (req, res) => {
     songwriting: hasGeminiKey(req.user),
     music: (hasGeminiKey(req.user) && process.env.GEMINI_MUSIC_ENABLED === '1') || !!process.env.ELEVENLABS_API_KEY,
     voiceover: !!process.env.ELEVENLABS_API_KEY,
-    billingConfigured: !!process.env.STRIPE_SECRET_KEY
+    billingConfigured: !!process.env.STRIPE_SECRET_KEY,
+    googleLogin: googleConfigured()
   });
 });
 
@@ -73,4 +76,9 @@ app.get('*', (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`ProShy AI running at http://localhost:${PORT}`);
+  // Printed at boot so the value to paste into Google Cloud Console is
+  // never a guess - it is whatever this process will actually send.
+  console.log(
+    `Google sign-in: ${googleConfigured() ? 'configured' : 'not configured'} | redirect URI: ${callbackUrl()}`
+  );
 });
