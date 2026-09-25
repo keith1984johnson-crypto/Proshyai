@@ -278,6 +278,13 @@ async function refreshProviderStatus() {
 
 refreshProviderStatus();
 // ---------- Helpers ----------
+// Mirrors CREDIT_COSTS.music on the server; the rail label is the source
+// of truth so the two cannot drift.
+const MUSIC_COST = (() => {
+  const label = document.querySelector('[data-tool="music"] .cost');
+  const parsed = label ? parseInt(label.textContent, 10) : NaN;
+  return Number.isFinite(parsed) ? parsed : 15;
+})();
 function setLoading(outEl, btn, isLoading, label) {
   if (isLoading) {
     btn.disabled = true;
@@ -448,6 +455,64 @@ document
       setLoading(outEl, btn, false, "Generate video");
     }
   });
+// Turn generated lyrics into an actual sung track via ElevenLabs Music.
+// Kept next to the songwriting flow because that is the only place it is
+// offered - the Music panel already accepts pasted lyrics on its own.
+function addSingThisButton(outEl, lyrics, genre) {
+  const wrap = document.createElement("div");
+  wrap.style.marginTop = "16px";
+
+  const btn = document.createElement("button");
+  btn.className = "generate-btn";
+  btn.textContent = `Perform this as a song (${MUSIC_COST}cr)`;
+  wrap.appendChild(btn);
+
+  const result = document.createElement("div");
+  result.style.marginTop = "12px";
+  wrap.appendChild(result);
+  outEl.appendChild(wrap);
+
+  btn.addEventListener("click", async () => {
+    btn.disabled = true;
+    btn.textContent = "Composing\u2026";
+    result.innerHTML = "";
+
+    try {
+      const song = await postJSON("/api/music", {
+        prompt: `A ${genre} song performed with vocals, singing these lyrics`,
+        lyrics,
+        genre,
+        durationSeconds: 60,
+        instrumental: false,
+      });
+
+      const audio = document.createElement("audio");
+      audio.src = song.audioUrl;
+      audio.controls = true;
+      result.appendChild(audio);
+
+      const caption = document.createElement("p");
+      caption.style.fontSize = "13px";
+      caption.style.color = "#8A919C";
+      caption.textContent = song.demo
+        ? song.requiresCredits
+          ? `Demo track \u2014 needs ${song.creditsNeeded} credits to perform it for real`
+          : "Demo track \u2014 add ELEVENLABS_API_KEY to go live"
+        : `Performed \u2014 ${song.creditsSpent} credits spent`;
+      result.appendChild(caption);
+
+      syncCreditsFromResult(song);
+      maybeShowUpgradeModal(song);
+      btn.textContent = "Perform again";
+    } catch (err) {
+      result.innerHTML = `<p style="color:#FF6B6B">${err.message}</p>`;
+      btn.textContent = "Try again";
+    } finally {
+      btn.disabled = false;
+    }
+  });
+}
+
 // ---------- Songwriting ----------
 document
   .querySelector('[data-action="songwriting"]')
@@ -475,7 +540,17 @@ document
       maybeShowUpgradeModal(data);
       // convenience: carry lyrics over to the Music and Music Video tabs
       document.getElementById("mu-lyrics").value = data.lyrics || "";
-      document.getElementById("mv-lyrics").value = data.lyrics || "";
+      const mvLyrics = document.getElementById("mv-lyrics");
+      if (mvLyrics) mvLyrics.value = data.lyrics || "";
+
+      // Lyrics on their own are half a song. Offer to perform them.
+      if (data.lyrics && !data.demo) {
+        addSingThisButton(
+          outEl,
+          data.lyrics,
+          document.getElementById("sw-genre").value,
+        );
+      }
     } catch (err) {
       outEl.innerHTML = `<p style="color:#FF6B6B">${err.message}</p>`;
     } finally {
