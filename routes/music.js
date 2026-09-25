@@ -3,6 +3,8 @@ const fetch = require('node-fetch');
 const { withFallback, newJobId } = require('./_utils');
 const { CREDIT_COSTS } = require('../config');
 const { generateSpeech, DEMO_AUDIO_URL } = require('./voiceover');
+const { resolveGeminiKey } = require('./account');
+const gemini = require('../lib/gemini');
 
 const router = express.Router();
 
@@ -30,13 +32,27 @@ router.post('/', async (req, res) => {
   const { prompt, lyrics = '', genre = 'cinematic', durationSeconds = 30, instrumental = false, addVocalGuide = false } = req.body;
   if (!prompt) return res.status(400).json({ error: 'prompt is required' });
 
+  const geminiKey = resolveGeminiKey(req.user);
+  const geminiMusicEnabled = Boolean(geminiKey) && process.env.GEMINI_MUSIC_ENABLED === '1';
+
   const result = await withFallback({
-    hasKey: !!process.env.ELEVENLABS_API_KEY,
+    hasKey: geminiMusicEnabled || !!process.env.ELEVENLABS_API_KEY,
     user: req.user,
     cost: CREDIT_COSTS.music,
     run: async () => {
-      // ElevenLabs Music. Chosen because the ElevenLabs key is already paid
-      // for; note it draws on the same character/credit budget as voiceover.
+      const description = `${genre} track: ${prompt}${instrumental ? ', instrumental only' : ''}${lyrics ? `. Lyrics: ${lyrics.slice(0, 500)}` : ''}`;
+
+      // Lyria first when it is available; ElevenLabs Music is the backup,
+      // and also the only option while Gemini billing is off.
+      if (geminiMusicEnabled) {
+        try {
+          return { audioUrl: await gemini.generateMusic(geminiKey, description, { durationSeconds }), provider: 'lyria' };
+        } catch (err) {
+          console.error('[music] Lyria failed, falling back to ElevenLabs:', err.message);
+          if (!process.env.ELEVENLABS_API_KEY) throw err;
+        }
+      }
+
       const r = await fetch('https://api.elevenlabs.io/v1/music', {
         method: 'POST',
         headers: {
@@ -45,14 +61,14 @@ router.post('/', async (req, res) => {
           Accept: 'audio/mpeg'
         },
         body: JSON.stringify({
-          prompt: `${genre} track: ${prompt}${instrumental ? ', instrumental only' : ''}${lyrics ? `. Lyrics: ${lyrics.slice(0, 500)}` : ''}`,
+          prompt: description,
           music_length_ms: Math.min(Math.max(Number(durationSeconds) * 1000, 3000), 600000),
           force_instrumental: Boolean(instrumental)
         })
       });
       if (!r.ok) throw new Error(`ElevenLabs Music error ${r.status}: ${await r.text()}`);
       const buffer = await r.buffer();
-      return { audioUrl: `data:audio/mpeg;base64,${buffer.toString('base64')}` };
+      return { audioUrl: `data:audio/mpeg;base64,${buffer.toString('base64')}`, provider: 'elevenlabs' };
     },
     demo: async () => ({
       audioUrl: 'https://interactive-examples.mdn.mozilla.net/media/cc0-audio/t-rex-roar.mp3'

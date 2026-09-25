@@ -13,7 +13,7 @@ const videoRoutes = require('./routes/video');        // /text-to-video, /image-
 const songwritingRoutes = require('./routes/songwriting');
 const musicRoutes = require('./routes/music');
 const musicVideoRoutes = require('./routes/musicVideo');
-const pixarRoutes = require('./routes/pixar');
+const filmRoutes = require('./routes/film');
 const { router: voiceoverRoutes } = require('./routes/voiceover');
 const { router: accountRoutes, hasGeminiKey } = require('./routes/account');
 
@@ -45,7 +45,7 @@ app.use('/api/music', musicRoutes);
 app.use('/api/music-video', musicVideoRoutes);
 app.use('/api/voiceover', voiceoverRoutes);       // POST /api/voiceover
 app.use('/api/account', accountRoutes);          // BYOK: Gemini key connect/status/disconnect
-app.use('/api/pixar', pixarRoutes);       // POST /api/pixar/short-film, /api/pixar/long-film
+app.use('/api/film', filmRoutes);         // POST /api/film/short-film, /api/film/long-film
 
 // Which providers are configured + credit/plan config (frontend uses this)
 app.get('/api/status', (req, res) => {
@@ -59,9 +59,9 @@ app.get('/api/status', (req, res) => {
     // permanently-broken tools back on the page. Set GEMINI_IMAGE_ENABLED=1
     // once the account has paid image access.
     image: hasGeminiKey(req.user) && process.env.GEMINI_IMAGE_ENABLED === '1',
-    video: !!process.env.RUNWAY_API_KEY || !!process.env.LUMA_API_KEY,
+    video: hasGeminiKey(req.user) && process.env.GEMINI_VIDEO_ENABLED === '1',
     songwriting: hasGeminiKey(req.user),
-    music: !!process.env.ELEVENLABS_API_KEY,
+    music: (hasGeminiKey(req.user) && process.env.GEMINI_MUSIC_ENABLED === '1') || !!process.env.ELEVENLABS_API_KEY,
     voiceover: !!process.env.ELEVENLABS_API_KEY,
     billingConfigured: !!process.env.STRIPE_SECRET_KEY
   });

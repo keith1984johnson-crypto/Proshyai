@@ -3,20 +3,20 @@ const fetch = require('node-fetch');
 const { withFallback, newJobId } = require('./_utils');
 const { CREDIT_COSTS } = require('../config');
 const { generateSpeech, DEMO_AUDIO_URL } = require('./voiceover');
+const { resolveGeminiKey } = require('./account');
+const gemini = require('../lib/gemini');
 
 const router = express.Router();
 
-const PIXAR_STYLE_PREFIX = '3D animated Pixar-style scene, vibrant colors, expressive characters, warm cinematic lighting, storybook charm:';
+// Describes the look without naming a studio - the previous wording
+// borrowed a trademark, which is not something to ship on a paid product.
+const ANIMATION_STYLE_PREFIX = '3D animated family film scene, vibrant colors, expressive characters, warm cinematic lighting, storybook charm:';
 
-async function generatePixarClip(prompt, aspectRatio = '16:9') {
-  const r = await fetch('https://api.lumalabs.ai/dream-machine/v1/generations', {
-    method: 'POST',
-    headers: { 'Authorization': `Bearer ${process.env.LUMA_API_KEY}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ prompt: `${PIXAR_STYLE_PREFIX} ${prompt}`, aspect_ratio: aspectRatio })
-  });
-  if (!r.ok) throw new Error(`Luma error ${r.status}: ${await r.text()}`);
-  const data = await r.json();
-  return { jobId: data.id, status: data.state || 'queued' };
+async function generateAnimatedClip(apiKey, prompt, aspectRatio = '16:9') {
+  const video = await gemini.generateVideo(apiKey, `${ANIMATION_STYLE_PREFIX} ${prompt}`, { aspectRatio });
+  return video.videoUrl
+    ? { videoUrl: video.videoUrl, status: 'complete' }
+    : { status: 'processing', operation: video.operationName };
 }
 
 // Generates a narration track for a Pixar scene, if narration text was
@@ -30,7 +30,7 @@ async function maybeGenerateNarration(narrationText, user) {
   return withFallback({
     hasKey: !!process.env.ELEVENLABS_API_KEY,
     user,
-    cost: CREDIT_COSTS.pixarNarration,
+    cost: CREDIT_COSTS.filmNarration,
     run: async () => ({ narrationAudioUrl: await generateSpeech(narrationText) }),
     demo: async () => ({ narrationAudioUrl: DEMO_AUDIO_URL })
   });
@@ -46,22 +46,21 @@ function applySpend(user, result) {
   return { ...user, credits: result.creditsRemaining };
 }
 
-// POST /api/pixar/short-film  { prompt, duration, narration }
-// A single Pixar-style clip, up to whatever max length the video provider
+// POST /api/film/short-film  { prompt, duration, narration }
+// A single animated clip, up to whatever max length the video provider
 // allows. `narration` is optional — if given, a separate spoken narration
 // track is generated alongside the video.
 router.post('/short-film', async (req, res) => {
   const { prompt, duration = 10, narration = '' } = req.body;
   if (!prompt) return res.status(400).json({ error: 'prompt is required' });
 
+  const geminiKey = resolveGeminiKey(req.user);
+
   const result = await withFallback({
-    hasKey: !!process.env.LUMA_API_KEY || !!process.env.RUNWAY_API_KEY,
+    hasKey: !!geminiKey,
     user: req.user,
-    cost: CREDIT_COSTS.pixarShortFilm,
-    run: async () => {
-      const clip = await generatePixarClip(prompt);
-      return { jobId: clip.jobId, status: clip.status, pollUrl: `/api/pixar/status/${clip.jobId}` };
-    },
+    cost: CREDIT_COSTS.animatedShortFilm,
+    run: async () => generateAnimatedClip(geminiKey, prompt),
     demo: async () => ({
       status: 'demo-complete',
       videoUrl: 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4'
@@ -82,12 +81,12 @@ router.post('/short-film', async (req, res) => {
   });
 });
 
-// POST /api/pixar/long-film  { title, scenes: [ "scene 1 description", ... ], narration }
+// POST /api/film/long-film  { title, scenes: [ "scene 1 description", ... ], narration }
 //
 // IMPORTANT LIMITATION: video generation providers (Luma, Runway, etc.) only
 // produce short clips per call — there is no API that generates a finished
 // multi-minute film in one request. This route queues one generation job per
-// scene you describe, Pixar-styled, and returns all the job/poll info at
+// scene you describe, animatedd, and returns all the job/poll info at
 // once. Turning the finished clips into one continuous film file requires a
 // video-stitching step (e.g. ffmpeg concatenation) run after every scene's
 // clip has finished rendering — that stitching step is not implemented here
@@ -103,7 +102,8 @@ router.post('/long-film', async (req, res) => {
     return res.status(400).json({ error: 'scenes must be a non-empty array of scene descriptions' });
   }
 
-  const hasKey = !!process.env.LUMA_API_KEY || !!process.env.RUNWAY_API_KEY;
+  const geminiKey = resolveGeminiKey(req.user);
+  const hasKey = !!geminiKey;
   const sceneResults = [];
   let liveUser = req.user;
 
@@ -111,11 +111,8 @@ router.post('/long-film', async (req, res) => {
     const result = await withFallback({
       hasKey,
       user: liveUser,
-      cost: CREDIT_COSTS.pixarLongFilmScene,
-      run: async () => {
-        const clip = await generatePixarClip(scenePrompt);
-        return { jobId: clip.jobId, status: clip.status, pollUrl: `/api/pixar/status/${clip.jobId}` };
-      },
+      cost: CREDIT_COSTS.animatedLongFilmScene,
+      run: async () => generateAnimatedClip(geminiKey, scenePrompt),
       demo: async () => ({
         status: 'demo-complete',
         videoUrl: 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4'

@@ -2,6 +2,8 @@ const express = require('express');
 const fetch = require('node-fetch');
 const { withFallback, newJobId } = require('./_utils');
 const { CREDIT_COSTS } = require('../config');
+const { resolveGeminiKey } = require('./account');
+const gemini = require('../lib/gemini');
 
 const router = express.Router();
 
@@ -17,23 +19,23 @@ router.post('/', async (req, res) => {
     return res.status(400).json({ error: 'songPrompt and visualPrompt are required' });
   }
 
+  const geminiKey = resolveGeminiKey(req.user);
+
   const result = await withFallback({
-    hasKey: !!process.env.RUNWAY_API_KEY || !!process.env.LUMA_API_KEY,
+    hasKey: !!geminiKey,
     user: req.user,
     cost: CREDIT_COSTS.musicVideo,
     run: async () => {
       const fullPrompt = `Music video visuals for a song about "${songPrompt}": ${visualPrompt}${lyrics ? `. Thematically matching these lyrics: ${lyrics.slice(0, 300)}` : ''}`;
-      const r = await fetch('https://api.lumalabs.ai/dream-machine/v1/generations', {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${process.env.LUMA_API_KEY}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: fullPrompt, aspect_ratio: '16:9' })
-      });
-      if (!r.ok) throw new Error(`Luma error ${r.status}: ${await r.text()}`);
-      const data = await r.json();
-      // NOTE: real production flow — once both the audio (from /api/music)
-      // and this video job finish, mux them together (e.g. ffmpeg) and
-      // serve the combined file. That combining step isn't included here.
-      return { jobId: data.id, status: data.state || 'queued', pollUrl: `/api/music-video/status/${data.id}`, note: 'Video generated; combine with an /api/music track server-side to produce the final music video file.' };
+      const video = await gemini.generateVideo(geminiKey, fullPrompt, { aspectRatio: '16:9' });
+
+      return video.videoUrl
+        ? {
+            videoUrl: video.videoUrl,
+            status: 'complete',
+            note: 'Visuals only - pair with a track from Music to finish the video.'
+          }
+        : { status: 'processing', operation: video.operationName };
     },
     demo: async () => ({
       status: 'demo-complete',

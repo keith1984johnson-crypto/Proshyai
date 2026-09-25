@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>ProShy AI — lyrics, music &amp; voiceover studio</title>
+    <title>ProShy AI — image, video, film, music &amp; voice studio</title>
     <link rel="stylesheet" href="/css/style.css" />
   </head>
   <body>
@@ -102,50 +102,107 @@
       </div>
     </div>
     <section class="hero">
-      <h1>One studio. Words, music, and voice.</h1>
+      <h1>One studio. Every format.</h1>
       <p>
-        Write original lyrics, perform them as a real song, or turn any script
-        into a voiceover — describe what you want and ProShy AI hands it to the
-        right model. $5 gets you 60 credits: around 20 sets of lyrics, four
-        finished songs, or a dozen voiceovers.
+        Images, video, animated films, songs and voiceovers — describe what you
+        want and ProShy AI hands it to the right model. Credits work across
+        every tool, and new accounts start with a free trial.
       </p>
     </section>
     <div class="studio">
+      <div class="section-tabs" id="sectionTabs" role="tablist">
+        <button class="section-tab active" data-section="image">Image</button>
+        <button class="section-tab" data-section="video">Video</button>
+        <button class="section-tab" data-section="film">Film</button>
+        <button class="section-tab" data-section="audio">
+          Music &amp; Voice
+        </button>
+      </div>
       <nav class="tool-rail" id="toolRail">
-        <button class="tool-item active" data-tool="text-to-image">
-          <span class="num">1</span>Text to image<span class="cost">5cr</span>
-        </button>
-        <button class="tool-item" data-tool="image-to-image">
-          <span class="num">2</span>Image to image<span class="cost">5cr</span>
-        </button>
-        <button class="tool-item" data-tool="text-to-video">
-          <span class="num">3</span>Text to video<span class="cost">20cr</span>
-        </button>
-        <button class="tool-item" data-tool="image-to-video">
-          <span class="num">4</span>Image to video<span class="cost">20cr</span>
-        </button>
-        <button class="tool-item" data-tool="songwriting">
-          <span class="num">5</span>Songwriting<span class="cost">3cr</span>
-        </button>
-        <button class="tool-item" data-tool="music">
-          <span class="num">6</span>Music<span class="cost">15cr</span>
-        </button>
-        <button class="tool-item" data-tool="music-video">
-          <span class="num">7</span>Music video<span class="cost">30cr</span>
-        </button>
-        <button class="tool-item" data-tool="pixar-short-film">
-          <span class="num">8</span>Pixar short film<span class="cost"
-            >35cr</span
+        <div class="rail-section" data-section="image">
+          <h3 class="rail-heading">Image</h3>
+          <button
+            class="tool-item active"
+            data-tool="text-to-image"
+            data-section="image"
           >
-        </button>
-        <button class="tool-item" data-tool="pixar-long-film">
-          <span class="num">9</span>Pixar long film<span class="cost"
-            >35cr/scene</span
+            <span class="num">1</span>Text to image<span class="cost">5cr</span>
+          </button>
+          <button
+            class="tool-item"
+            data-tool="image-to-image"
+            data-section="image"
           >
-        </button>
-        <button class="tool-item" data-tool="voiceover">
-          <span class="num">10</span>Voiceover<span class="cost">5cr</span>
-        </button>
+            <span class="num">2</span>Image to image<span class="cost"
+              >5cr</span
+            >
+          </button>
+        </div>
+        <div class="rail-section" data-section="video">
+          <h3 class="rail-heading">Video</h3>
+          <button
+            class="tool-item"
+            data-tool="text-to-video"
+            data-section="video"
+          >
+            <span class="num">3</span>Text to video<span class="cost"
+              >20cr</span
+            >
+          </button>
+          <button
+            class="tool-item"
+            data-tool="image-to-video"
+            data-section="video"
+          >
+            <span class="num">4</span>Image to video<span class="cost"
+              >20cr</span
+            >
+          </button>
+          <button
+            class="tool-item"
+            data-tool="music-video"
+            data-section="video"
+          >
+            <span class="num">5</span>Music video<span class="cost">30cr</span>
+          </button>
+        </div>
+        <div class="rail-section" data-section="film">
+          <h3 class="rail-heading">Film</h3>
+          <button
+            class="tool-item"
+            data-tool="animated-short-film"
+            data-section="film"
+          >
+            <span class="num">6</span>Animated short film<span class="cost"
+              >35cr</span
+            >
+          </button>
+          <button
+            class="tool-item"
+            data-tool="animated-long-film"
+            data-section="film"
+          >
+            <span class="num">7</span>Animated long film<span class="cost"
+              >35cr/scene</span
+            >
+          </button>
+        </div>
+        <div class="rail-section" data-section="audio">
+          <h3 class="rail-heading">Music &amp; Voice</h3>
+          <button
+            class="tool-item"
+            data-tool="songwriting"
+            data-section="audio"
+          >
+            <span class="num">8</span>Songwriting<span class="cost">3cr</span>
+          </button>
+          <button class="tool-item" data-tool="music" data-section="audio">
+            <span class="num">9</span>Music<span class="cost">15cr</span>
+          </button>
+          <button class="tool-item" data-tool="voiceover" data-section="audio">
+            <span class="num">10</span>Voiceover<span class="cost">5cr</span>
+          </button>
+        </div>
       </nav>
       <div class="panel">
         <!-- 1. Text to Image -->
@@ -459,18 +516,18 @@
           </button>
           <div class="output empty" id="out-music-video"></div>
         </div>
-        <!-- 8. Pixar Short Film -->
-        <div class="panel-view" data-view="pixar-short-film" hidden>
+        <!-- Animated short film -->
+        <div class="panel-view" data-view="animated-short-film" hidden>
           <div class="panel-head">
             <h2>
-              Pixar short film
+              Animated short film
               <span class="demo-badge" data-demo-for="video" hidden
                 >demo mode</span
               >
             </h2>
             <p>
-              One Pixar-styled clip — a single scene, up to the video provider's
-              max clip length.
+              One animated clip — a single scene, up to the video provider's max
+              clip length.
             </p>
           </div>
           <div class="field">
@@ -499,23 +556,23 @@
               placeholder="Once upon a time, in a garden nobody visited anymore…"
             ></textarea>
           </div>
-          <button class="generate-btn" data-action="pixar-short-film">
+          <button class="generate-btn" data-action="animated-short-film">
             Generate short film
           </button>
-          <div class="output empty" id="out-pixar-short-film"></div>
+          <div class="output empty" id="out-animated-short-film"></div>
         </div>
-        <!-- 9. Pixar Long Film -->
-        <div class="panel-view" data-view="pixar-long-film" hidden>
+        <!-- Animated long film -->
+        <div class="panel-view" data-view="animated-long-film" hidden>
           <div class="panel-head">
             <h2>
-              Pixar long film
+              Animated long film
               <span class="demo-badge" data-demo-for="video" hidden
                 >demo mode</span
               >
             </h2>
             <p>
               Describe your film scene by scene (one per line). Each scene
-              generates as its own Pixar-styled clip — stitching them into one
+              generates as its own animated clip — stitching them into one
               continuous film is a manual editing step for now, using the clips
               this returns.
             </p>
@@ -543,10 +600,10 @@
               placeholder="Once upon a time, in a garden nobody visited anymore…"
             ></textarea>
           </div>
-          <button class="generate-btn" data-action="pixar-long-film">
+          <button class="generate-btn" data-action="animated-long-film">
             Generate all scenes
           </button>
-          <div class="output empty" id="out-pixar-long-film"></div>
+          <div class="output empty" id="out-animated-long-film"></div>
         </div>
         <!-- 10. Voiceover -->
         <div class="panel-view" data-view="voiceover" hidden>
