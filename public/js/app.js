@@ -174,6 +174,27 @@ if (apiKeyForm) {
       document.getElementById("apiKeyModal").hidden = true;
     });
 }
+// Report the outcome of a Google sign-in redirect, then tidy the URL.
+(function reportLoginResult() {
+  const result = new URLSearchParams(location.search).get("login");
+  if (!result) return;
+
+  const messages = {
+    success: null,
+    welcome: null,
+    cancelled: "Google sign-in was cancelled.",
+    failed: "Google sign-in failed. Please try again.",
+    state_mismatch: "Google sign-in expired. Please try again.",
+    unverified_email:
+      "Google has not verified that email address, so it cannot be linked to an existing ProShy account. Log in with your password instead.",
+    unconfigured: "Google sign-in is not available right now.",
+  };
+
+  const message = messages[result];
+  if (message) alert(message);
+  history.replaceState({}, "", location.pathname);
+})();
+
 refreshAuthState();
 // ---------- Section + tool switching ----------
 // Sections group the tools (Image / Video / Film / Music & Voice). On mobile
@@ -259,6 +280,12 @@ async function refreshProviderStatus() {
   } catch {
     return;
   }
+
+  // Show the Google button only when the server has credentials for it.
+  const googleBtn = document.getElementById("googleBtn");
+  const authDivider = document.getElementById("authDivider");
+  if (googleBtn) googleBtn.hidden = !status.googleLogin;
+  if (authDivider) authDivider.hidden = !status.googleLogin;
 
   document.querySelectorAll("[data-demo-for]").forEach((badge) => {
     badge.hidden = Boolean(status[badge.dataset.demoFor]);

@@ -47,6 +47,9 @@ addUserColumn('openai_key_last4', 'TEXT');
 
 // Gemini replaced OpenAI for text and images; the older openai_* columns
 // are left in place so no existing row is destroyed by the switch.
+// Google sign-in: the account's Google subject id, once linked.
+addUserColumn('google_id', 'TEXT');
+
 addUserColumn('gemini_key_encrypted', 'TEXT');
 addUserColumn('gemini_key_last4', 'TEXT');
 

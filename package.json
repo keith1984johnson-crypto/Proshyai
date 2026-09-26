@@ -7,7 +7,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",
-    "test": "node tests/billing.test.js"
+    "test": "node tests/billing.test.js && node tests/oauth.test.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
