@@ -25,16 +25,37 @@ const STATE_COOKIE = 'proshy_oauth_state';
 const SCOPES = ['openid', 'email', 'profile'];
 
 function appUrl() {
-  return (process.env.APP_URL || 'https://proshyai.com').replace(/\/+$/, '');
+  return (process.env.APP_URL || 'https://proshyai.com').replace(/\s+/g, '').replace(/\/+$/, '');
 }
 
 /** The redirect URI registered with Google. */
 function callbackUrl() {
-  return process.env.GOOGLE_CALLBACK_URL || `${appUrl()}/api/auth/google/callback`;
+  const override = (process.env.GOOGLE_CALLBACK_URL || '').replace(/\s+/g, '');
+  return override || `${appUrl()}/api/auth/google/callback`;
+}
+
+/**
+ * Read a credential from the environment, with all whitespace removed.
+ *
+ * Copying a client id or secret on a phone can introduce line breaks in the
+ * middle of the value. Neither Google credential legitimately contains
+ * whitespace, so stripping it turns a confusing invalid_client rejection
+ * into something that simply works.
+ */
+function credential(name) {
+  return (process.env[name] || '').replace(/\s+/g, '');
+}
+
+function clientId() {
+  return credential('GOOGLE_CLIENT_ID');
+}
+
+function clientSecret() {
+  return credential('GOOGLE_CLIENT_SECRET');
 }
 
 function isConfigured() {
-  return Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
+  return Boolean(clientId() && clientSecret());
 }
 
 function setSessionCookie(res, userId) {
@@ -69,7 +90,7 @@ router.get('/google', (req, res) => {
   });
 
   const params = new URLSearchParams({
-    client_id: process.env.GOOGLE_CLIENT_ID,
+    client_id: clientId(),
     redirect_uri: callbackUrl(),
     response_type: 'code',
     scope: SCOPES.join(' '),
@@ -102,8 +123,8 @@ router.get('/google/callback', async (req, res) => {
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({
         code: String(code),
-        client_id: process.env.GOOGLE_CLIENT_ID,
-        client_secret: process.env.GOOGLE_CLIENT_SECRET,
+        client_id: clientId(),
+        client_secret: clientSecret(),
         redirect_uri: callbackUrl(),
         grant_type: 'authorization_code'
       })
