@@ -16,6 +16,9 @@ const os = require('node:os');
 // Point the database at a throwaway file before anything requires db.js.
 const tmpDb = path.join(os.tmpdir(), `proshy-test-${Date.now()}.db`);
 process.env.DATABASE_PATH = tmpDb;
+// The Stripe client is constructed when routes/billing is imported, and
+// signature verification needs it, so this must be set before the require.
+process.env.STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY || 'sk_test_dummy_for_signature_checks';
 
 const db = require('../db');
 const { CREDIT_GRANTS, CREDIT_PACKS } = require('../config');
@@ -205,7 +208,6 @@ test('a comma or whitespace separated list is parsed', () => {
 });
 
 test('an event signed with the SECOND secret still verifies', () => {
-  process.env.STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY || 'sk_test_dummy';
   process.env.STRIPE_WEBHOOK_SECRET = 'whsec_wrongone,whsec_rightone';
 
   const payload = JSON.stringify({ id: 'evt_multi', type: 'ping', data: { object: {} } });
