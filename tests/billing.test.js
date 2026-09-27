@@ -19,7 +19,8 @@ process.env.DATABASE_PATH = tmpDb;
 
 const db = require('../db');
 const { CREDIT_GRANTS, CREDIT_PACKS } = require('../config');
-const { applyStripeEvent } = require('../routes/billing');
+const crypto = require('node:crypto');
+const { applyStripeEvent, webhookSecrets, verifyWebhook } = require('../routes/billing');
 
 let passed = 0;
 function test(name, fn) {
@@ -187,6 +188,35 @@ test('an unknown customer is ignored safely', () => {
 test('a malformed event is ignored safely', () => {
   assert.strictEqual(applyStripeEvent({}).applied, false);
   assert.strictEqual(applyStripeEvent({ type: 'invoice.paid' }).applied, false);
+});
+
+// --- webhook signature verification across multiple secrets -----------
+function sign(payload, secret) {
+  const ts = Math.floor(Date.now() / 1000);
+  const sig = crypto.createHmac('sha256', secret).update(`${ts}.${payload}`).digest('hex');
+  return `t=${ts},v1=${sig}`;
+}
+
+console.log('\nwebhook secrets');
+
+test('a comma or whitespace separated list is parsed', () => {
+  process.env.STRIPE_WEBHOOK_SECRET = 'whsec_live, whsec_test\nwhsec_third';
+  assert.deepStrictEqual(webhookSecrets(), ['whsec_live', 'whsec_test', 'whsec_third']);
+});
+
+test('an event signed with the SECOND secret still verifies', () => {
+  process.env.STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY || 'sk_test_dummy';
+  process.env.STRIPE_WEBHOOK_SECRET = 'whsec_wrongone,whsec_rightone';
+
+  const payload = JSON.stringify({ id: 'evt_multi', type: 'ping', data: { object: {} } });
+  const event = verifyWebhook(payload, sign(payload, 'whsec_rightone'));
+  assert.strictEqual(event.id, 'evt_multi');
+});
+
+test('an event signed with no known secret is rejected', () => {
+  process.env.STRIPE_WEBHOOK_SECRET = 'whsec_a,whsec_b';
+  const payload = JSON.stringify({ id: 'evt_bad', type: 'ping', data: { object: {} } });
+  assert.throws(() => verifyWebhook(payload, sign(payload, 'whsec_somethingelse')));
 });
 
 console.log(`\n${passed} passed\n`);

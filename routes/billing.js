@@ -213,21 +213,52 @@ router.get('/status', (req, res) => {
   });
 });
 
+/**
+ * Signing secrets to accept, from STRIPE_WEBHOOK_SECRET.
+ *
+ * More than one endpoint can point at this URL - typically a live one and
+ * a test one - and each signs with its own secret. Knowing only one means
+ * the other's deliveries are rejected, which fills the log with signature
+ * failures that would hide a real problem. Accept a comma or whitespace
+ * separated list and try each.
+ */
+function webhookSecrets() {
+  return (process.env.STRIPE_WEBHOOK_SECRET || '')
+    .split(/[\s,]+/)
+    .map((v) => v.trim())
+    .filter(Boolean);
+}
+
+/** Verify against any configured secret. Throws if none match. */
+function verifyWebhook(rawBody, signature) {
+  const secrets = webhookSecrets();
+  let lastError;
+
+  for (const secret of secrets) {
+    try {
+      return stripe.webhooks.constructEvent(rawBody, signature, secret);
+    } catch (err) {
+      lastError = err;
+    }
+  }
+
+  throw lastError || new Error('No webhook signing secret configured');
+}
+
 // POST /api/billing/webhook — raw body, wired up before express.json() in server.js
 async function stripeWebhookHandler(req, res) {
-  if (!stripe || !process.env.STRIPE_WEBHOOK_SECRET) {
+  if (!stripe || webhookSecrets().length === 0) {
     return res.status(503).send('Webhook not configured');
   }
 
   let event;
   try {
-    event = stripe.webhooks.constructEvent(
-      req.body,
-      req.headers['stripe-signature'],
-      process.env.STRIPE_WEBHOOK_SECRET
-    );
+    event = verifyWebhook(req.body, req.headers['stripe-signature']);
   } catch (err) {
-    console.error('[billing] webhook signature verification failed:', err.message);
+    console.error(
+      `[billing] webhook signature verification failed against ${webhookSecrets().length} configured secret(s):`,
+      err.message
+    );
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
 
@@ -244,4 +275,12 @@ async function stripeWebhookHandler(req, res) {
   }
 }
 
-module.exports = { router, stripeWebhookHandler, applyStripeEvent, grantCredits, priceIdFor };
+module.exports = {
+  router,
+  stripeWebhookHandler,
+  applyStripeEvent,
+  grantCredits,
+  priceIdFor,
+  webhookSecrets,
+  verifyWebhook
+};
